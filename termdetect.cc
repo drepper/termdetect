@@ -1,9 +1,12 @@
 #include "termdetect.hh"
 
+#include <cassert>
 #include <cctype>
 #include <cstring>
 #include <format>
+#include <map>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include <fcntl.h>
@@ -29,11 +32,18 @@ namespace terminal {
 
       bool da2_alarmed = false;
 
+      // Version number derived from DA2 reply.
+      unsigned vn = 0;
+
 
       void make_da1_request(int fd);
-      void parse_da1();
-
       bool make_da2_request(int fd);
+      void make_da3_request(int fd);
+      void make_tn_request(int fd);
+      void make_q_request(int fd);
+      void make_osc702_request(int fd);
+
+      void parse_da1();
       void parse_da2();
 
       bool is_st() const;
@@ -78,6 +88,60 @@ namespace terminal {
 #define DA3_REQUEST CSI "=c"
 #define DA3_REPLY_PREFIX DCS "!|"
 #define DA3_REPLY_SUFFIX ST
+
+
+    const std::array known_emulations {
+      std::make_tuple("0;", emulations::vt100),
+      std::make_tuple("1;0", emulations::vt101),
+      std::make_tuple("1;2", emulations::vt100avo),
+      std::make_tuple("2;", emulations::vt240),
+      std::make_tuple("4;6", emulations::vt132),
+      std::make_tuple("6;", emulations::vt102),
+      std::make_tuple("7;", emulations::vt131),
+      std::make_tuple("18;", emulations::vt330),
+      std::make_tuple("12;", emulations::vt125),
+      std::make_tuple("19;", emulations::vt340),
+      std::make_tuple("24;", emulations::vt320),
+      std::make_tuple("32;", emulations::vt382),
+      std::make_tuple("41;", emulations::vt420),
+      std::make_tuple("61;", emulations::vt510),
+      std::make_tuple("62;", emulations::vt220),
+      std::make_tuple("63;", emulations::vt320),
+      std::make_tuple("64;", emulations::vt520),
+      std::make_tuple("65;", emulations::vt525),
+      // These entries are present for rxvt which stores 'U' or 'R' in the first number of the DA2 reply
+      std::make_tuple("85;", emulations::unknown),
+      std::make_tuple("82;", emulations::unknown),
+    };
+
+
+    const std::map<unsigned,features> known_features {
+      { 1, features::col132 },
+      { 2, features::printer },
+      { 3, features::regis },
+      { 4, features::sixel },
+      { 6, features::selerase },
+      { 7, features::drcs },
+      { 8, features::udk },
+      { 9, features::nrcs },
+      { 12, features::scs },
+      { 15, features::techcharset },
+      { 16, features::locatorport },
+      { 17, features::stateinterrogation },
+      { 18, features::windowing },
+      { 19, features::sessions },
+      { 21, features::horscroll },
+      { 22, features::ansicolors },
+      { 23, features::greek },
+      { 24, features::turkish },
+      { 28, features::recteditcontour },
+      { 29, features::textlocator },
+      { 42, features::latin2 },
+      { 44, features::pcterm },
+      { 45, features::softkeymap },
+      { 46, features::asciiemul },
+      { 314, features::capturecontour },
+    };
 
 
     // Timeout for individual requests in case the emulator does not answer.
@@ -152,6 +216,35 @@ namespace terminal {
 
     void info_impl::parse_da1()
     {
+      std::string_view sv = da1_reply;
+
+      // Remove the terminal prefix from DA1 reply.  Some emulators (e.g., Terminology)
+      // are inconsistent in the announcement of the terminal type in the DA2 and DA1
+      // replies.  Give preference to the former.
+      for (const auto& e : known_emulations)
+        if (sv.starts_with(std::get<const char*>(e))) {
+          if (emulation == emulations::unknown)
+            emulation = std::get<emulations>(e);
+          sv.remove_prefix(strlen(std::get<const char*>(e)));
+          break;
+        }
+
+      while (! sv.empty()) {
+        unsigned code;
+        auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), code);
+        if (ec != std::errc{ } || ! (ptr == sv.data() + sv.size() || ptr[0] == ';'))
+          break;
+        if (ptr[0] != '\0')
+          ++ptr;
+        if (auto feature = known_features.find(code); feature != known_features.end())
+          feature_set.insert(feature->second);
+        else
+          unknown_features += std::string(sv.data(), ptr - sv.data());
+        sv.remove_prefix(ptr - sv.data());
+      }
+
+      if (unknown_features.ends_with(";"))
+        unknown_features.erase(unknown_features.size() - 1);
     }
 
 
@@ -167,6 +260,55 @@ namespace terminal {
 
     void info_impl::parse_da2()
     {
+      std::string_view sv = da2_reply;
+
+      for (const auto& e : known_emulations)
+        if (sv.starts_with(std::get<const char*>(e))) {
+          emulation = std::get<emulations>(e);
+          sv.remove_prefix(strlen(std::get<const char*>(e)));
+          break;
+        }
+
+      // The DA2 reply consists of the version information.  Usually separated by semicolons.
+      auto skip = sv.find(';');
+      auto [endp, ec] = std::from_chars(sv.data(), sv.data() + (skip == std::string_view::npos ? sv.size() : skip), vn);
+      if (ec == std::errc{ }) {
+        sv.remove_prefix(endp - sv.data());
+        if (sv[0] == ';') {
+          unsigned vn2;
+          auto [endp2, ec2] = std::from_chars(sv.data() + 1, sv.data() + sv.size(), vn2);
+
+          // Terminal emulators do not agree how to encode the version number.  Some encode all the data in the number
+          // after the first semicolon.  Others use the second semicolon as a decimal point.  Try to guess.
+          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100)
+            vn = vn * 100 + vn2;
+        }
+      }
+    }
+
+
+    void info_impl::make_da3_request(int fd)
+    {
+      (void) make_request(da3_reply, fd, DA3_REQUEST, DA3_REPLY_PREFIX, DA3_REPLY_SUFFIX);
+    }
+
+    void info_impl::make_tn_request(int fd)
+    {
+      (void) make_request(tn_reply, fd, TN_REQUEST, TN_REPLY_PREFIX, TN_REPLY_SUFFIX);
+
+      // Recognize the error code.
+      if (tn_reply.starts_with(DCS "0"))
+        tn_reply = "???";
+    }
+
+    void info_impl::make_q_request(int fd)
+    {
+      (void) make_request(q_reply, fd, Q_REQUEST, Q_REPLY_PREFIX, Q_REPLY_SUFFIX);
+    }
+
+    void info_impl::make_osc702_request(int fd)
+    {
+      (void) make_request(osc702_reply, fd, OSC702_REQUEST, OSC702_REPLY_PREFIX, OSC702_REPLY_SUFFIX);
     }
 
 
@@ -188,7 +330,7 @@ namespace terminal {
         return false;
 
       unsigned val;
-      auto [endp,ec] = std::from_chars(da2_reply.data() + 2, da2_reply.data() + da2_reply.size(), val, 10);
+      auto [endp, ec] = std::from_chars(da2_reply.data() + 2, da2_reply.data() + da2_reply.size(), val, 10);
       return ec == std::errc() && (da2_reply.data() + da2_reply.size() - endp) == 2 && da1_reply == "6" && da2_reply.starts_with("0;") && da2_reply.ends_with(";1");
     }
 
@@ -313,7 +455,39 @@ namespace terminal {
       // Unless there is something else that can be done the best we can do is to limit the number
       // of delays to one by determining the emulator type based on the DA2 request timeout.
       if (! is_st() && ! is_alacritty()) {
+        if (is_not_vte() && ! is_rxvt()) {
+          make_q_request(fd);
 
+          // Do not issue the TN request for rxvt and xterm.  We use the DA2 or Q reply for this.  It might not be conclusive but
+          // no counterexamples are known so far.
+          if (! is_rxvt() && ! is_xterm() && ! is_contour() && ! is_terminology() && ! is_konsole())
+            make_tn_request(fd);
+        }
+
+        if (! is_kitty() && ! is_rxvt()) {
+          make_da3_request(fd);
+
+          // Reconsider whether to issue the Q and TN requests.
+          if (is_not_vte() && ! is_vte() && ! is_xterm() && ! is_konsole()) {
+            make_q_request(fd);
+            if (! is_terminology())
+              make_tn_request(fd);
+          }
+        }
+
+        // Do not issue the DA3 and OSC702 requests for the kitty terminal emulator, it does not handle them so far.
+        if (! is_kitty()) {
+          // Do not issue the DA3 request for rxvt.
+          if (! is_rxvt())
+            make_da3_request(fd);
+
+          if (da3_reply == "???") {
+            make_osc702_request(fd);
+
+            // The code below assumes that we can identify rxvt via the OSC702 reply.
+            assert(! is_rxvt() || osc702_reply.starts_with("rxvt"));
+          }
+        }
       }
 
       ::close(fd);

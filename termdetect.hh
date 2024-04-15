@@ -83,6 +83,7 @@ namespace terminal {
     std::string implementation_version { };
     emulations emulation = emulations::unknown;
     std::set<features> feature_set { };
+    std::string unknown_features { };
 
     std::string implementation_name() const;
     std::string emulation_name() const;
