@@ -1,0 +1,23 @@
+gnome-terminal
+--------------
+implementation         = VTE-based
+implementation version = XXXXXX
+emulation              = VT525;1
+features               = 132cols nrcs
+raw                    = TN=, DA1=65;1;9, DA2=65;XXXXXX;1, DA3=7E565445, OSC702=, Q=
+
+foot
+----
+implementation         = Foot
+implementation version = XXXXXX
+emulation              = VT101;0
+features               = sixel ansicolors
+raw                    = TN=666F6F74, DA1=62;4;22, DA2=1;XXXXXX;0, DA3=464f4f54, OSC702=, Q=foot(XXXXXX)
+
+alacritty
+---------
+implementation         = Alacritty
+implementation version = XXXXXX
+emulation              = VT100;1
+features               = selerase
+raw                    = TN=, DA1=6, DA2=0;XXXX;XX, DA3=, OSC702=, Q=
