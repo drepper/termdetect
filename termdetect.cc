@@ -436,11 +436,11 @@ namespace terminal {
       make_da1_request(fd);
 
       // The order to make requests without stalling/timing out in the reads is complicated.
-      // - alacritty does not handle CSI > q, CSI + q T N, DA3, nor OSC 702
+      // - alacritty does not handle CSI > q, DCS + q T N, DA3, nor OSC702
       // - VTE does not understand CSI > q but that is the ultimate informer for xterm.
       // - alternatively DA3 can be used as a weak signal for xterm but DA3 does not work for kitty nor rxvt
       // - kitty needs the CSI + q T N request but this also does not work for VTE
-      // We break the cycle by not issuing DA3 early and avoid if the CSI > q and CSI + q T N requests if
+      // We break the cycle by not issuing DA3 early and avoid if the CSI > q and DCS + q T N requests if
       // the terminal could possibly be VTE based.  Once we can exclude rxvt and kitty we can issue DA3
       // to be sure.
       // +----------------+-----------+-----------+-----------+-----------+-----------+------------+
