@@ -7,6 +7,7 @@
 #include <map>
 #include <optional>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 #include <fcntl.h>
@@ -280,7 +281,7 @@ namespace terminal {
 
           // Terminal emulators do not agree how to encode the version number.  Some encode all the data in the number
           // after the first semicolon.  Others use the second semicolon as a decimal point.  Try to guess.
-          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100)
+          if (ec2 == std::errc{ } && vn < 10000 && vn2 != 0 && vn2 < 100)
             vn = vn * 100 + vn2;
         }
       }
@@ -495,6 +496,8 @@ namespace terminal {
       // We are ready to determine the emulators.
       if (is_st())
         implementation = implementations::st;
+      else if (da3_reply == "7E565445")
+        implementation = implementations::vte;
       else if (da3_reply == "464f4f54")
         implementation = implementations::foot;
       else if (is_terminology())
