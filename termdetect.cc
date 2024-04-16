@@ -229,6 +229,13 @@ namespace terminal {
             emulation = std::get<emulations>(e);
           sv.remove_prefix(strlen(std::get<const char*>(e)));
           break;
+        } else if (sv.size() == strlen(std::get<const char*>(e)) - 1 && strncmp(sv.data(), std::get<const char*>(e), sv.size()) == 0) {
+          // Some terminals just announce the emulation and therefore do not have the trailing semicolon
+          // present in the known_emulation table.
+          if (emulation == emulations::unknown)
+            emulation = std::get<emulations>(e);
+          sv.remove_prefix(sv.size());
+          break;
         }
 
       while (! sv.empty()) {
