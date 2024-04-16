@@ -26,6 +26,7 @@ namespace terminal {
 
       std::string da1_reply { };
       std::string da2_reply { };
+      std::string_view da2_reply_tail { };
       std::string da3_reply { };
       std::string q_reply { };
       std::string tn_reply { };
@@ -275,6 +276,7 @@ namespace terminal {
       auto [endp, ec] = std::from_chars(sv.data(), sv.data() + (skip == std::string_view::npos ? sv.size() : skip), vn);
       if (ec == std::errc{ }) {
         sv.remove_prefix(endp - sv.data());
+        da2_reply_tail = sv;
         if (sv[0] == ';') {
           unsigned vn2;
           auto [endp2, ec2] = std::from_chars(sv.data() + 1, sv.data() + sv.size(), vn2);
@@ -447,11 +449,11 @@ namespace terminal {
       // | ST             | 6         | no resp   | no resp   | no resp   | no resp   |            |
       // | Terminology    | a lot     | 61;VERS;0 | 7E7E5459  | terminolo*| no resp   |            |
       // | VTE            | 65;1;9    | 65;VERS;1 | 7E565445  | no resp   | no resp   |            |
-      // | xterm          |           |           |           |           |           |            |
+      // | XTerm          | a lot     | 41;VERS;0 | 00000000  | XTerm(*   | no resp   |            |
       // |                |           |           |           |           |           |            |
       // +----------------+-----------+-----------+-----------+-----------+-----------+------------+
 
-      // Detecting ST is with the currently used requests not possible without a delay.  It only
+      // Detecting ST is, with the currently used requests, not possible without a delay.  It only
       // responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty).
       // Unless there is something else that can be done the best we can do is to limit the number
       // of delays to one by determining the emulator type based on the DA2 request timeout.
@@ -493,7 +495,9 @@ namespace terminal {
 
       ::close(fd);
 
-      // We are ready to determine the emulators.
+      raw = std::format("TN={}, DA1={}, DA2={}, DA3={}, OSC702={}, Q={}", tn_reply, da1_reply, da2_reply, da3_reply, osc702_reply, q_reply);
+
+      // We are ready to determine the implementation.
       if (is_st())
         implementation = implementations::st;
       else if (da3_reply == "7E565445")
@@ -514,6 +518,38 @@ namespace terminal {
         implementation = implementations::alacritty;
       else if (is_konsole())
         implementation = implementations::konsole;
+
+      // Determine the implementation version.
+      if (is_terminology()) {
+        // Terminology does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
+        assert(! q_reply.empty());
+        implementation_version = q_reply.substr(12);
+      } else if (is_konsole()) {
+        // Konsole does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
+        assert(! q_reply.empty());
+        implementation_version = q_reply.substr(8);
+      } else {
+        if (is_rxvt())
+          // rxvt encodes the version number as Mm (major/minor) in two digits.
+          vn = (vn / 10) * 10000 + (vn % 10) * 100;
+        else if (is_kitty() && vn > 400000)
+          // For some reason kitty adds 4000 to the first number.
+          vn = (vn - 400000) * 100;
+        else if (is_xterm())
+          // XTerm version numbers are > 100 and there is not even a minor version number.
+          vn *= 10000;
+        else if (is_vte())
+          // Ignore the last number after all.
+          vn /= 100;
+
+        // Not all implementations provide a patch number.
+        if (vn % 10000 == 0)
+          implementation_version = std::format("{}", vn / 10000);
+        else if (vn % 100 == 0)
+          implementation_version = std::format("{}.{}", vn / 10000, (vn / 100) % 100);
+        else
+          implementation_version = std::format("{}.{}.{}", vn / 10000, (vn / 100) % 100, vn % 100);
+      }
     }
   }
 
@@ -645,7 +681,7 @@ namespace terminal {
       res = "<unknown terminal>";
     }
 
-    for (auto b : real_this->da2_reply)
+    for (auto b : real_this->da2_reply_tail)
       if (isprint(b))
         res += b;
       else

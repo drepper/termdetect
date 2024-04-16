@@ -84,6 +84,7 @@ namespace terminal {
     emulations emulation = emulations::unknown;
     std::set<features> feature_set { };
     std::string unknown_features { };
+    std::string raw { };
 
     std::string implementation_name() const;
     std::string emulation_name() const;
