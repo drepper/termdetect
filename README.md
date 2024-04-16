@@ -41,10 +41,8 @@ More might be used in the future.
 
 The supported emulators respond as follows:
 
-|----------------|-----------|-----------|-----------|-----------|-----------|------------|
 | Name           |    DA1    |    DA2    |    DA3    |     Q     |    TN     |   OSC702   |
 |----------------|-----------|-----------|-----------|-----------|-----------|------------|
-|                |           |           |           |           |           |            |
 | Alacritty      | 6         | 0;VERS;1  | no resp   | no resp   | no resp   |            |
 | Contour        | a lot     | 65;VERS;0 | C0000000  | contour * | ""        |            |
 | Foot           | 62;4;22   | 1;VERS;0  | 464f4f54  | foot(*    | 666F6F74  |            |
@@ -55,8 +53,6 @@ The supported emulators respond as follows:
 | Terminology    | a lot     | 61;VERS;0 | 7E7E5459  | terminolo*| no resp   |            |
 | VTE            | 65;1;9    | 65;VERS;1 | 7E565445  | no resp   | no resp   |            |
 | XTerm          | a lot     | 41;VERS;0 | 00000000  | XTerm(*   | no resp   |            |
-|                |           |           |           |           |           |            |
-|----------------|-----------|-----------|-----------|-----------|-----------|------------|
 
 This means that the time of this writing these rules are followed in the discovery:
 
