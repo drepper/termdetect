@@ -557,6 +557,11 @@ namespace terminal {
         else
           implementation_version = std::format("{}.{}.{}", vn / 10000, (vn / 100) % 100, vn % 100);
       }
+
+      // Add features which are not discovered automatically.
+      if (is_kitty())
+        // OSC777 supported.
+        feature_set.insert(features::desktopnotification);
     }
   }
 

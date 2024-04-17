@@ -71,6 +71,7 @@ namespace terminal {
     asciiemul,
     capturecontour,
     recteditcontour,
+    desktopnotification,      // OSC777
   };
 
 
