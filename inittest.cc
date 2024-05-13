@@ -17,4 +17,7 @@ int main()
     std::cout << ' ' << ti->unknown_features;
   std::cout << std::endl;
   std::cout << "raw                    = " << ti->raw << std::endl;
+  auto [col,row] = ti->get_geometry().value_or(std::make_tuple(80u, 24u));
+  std::cout << "columns                = " << col << std::endl;
+  std::cout << "rows                   = " << row << std::endl;
 }

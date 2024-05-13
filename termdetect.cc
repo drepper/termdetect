@@ -15,6 +15,7 @@
 #include <poll.h>
 #include <termios.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 
 namespace terminal {
@@ -761,5 +762,18 @@ namespace terminal {
     }
   }
 
+
+  std::optional<std::tuple<unsigned,unsigned>> info::get_geometry()
+  {
+    int fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY);
+    if (fd == -1)
+      return std::nullopt;
+    winsize ws;
+    auto r = ::ioctl(fd, TIOCGWINSZ, &ws);
+    ::close(fd);
+    if (r == 0)
+      return std::make_tuple(unsigned(ws.ws_col), unsigned(ws.ws_row));
+    return std::nullopt;
+  }
 
 } // namespace terminal

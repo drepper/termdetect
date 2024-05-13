@@ -2,8 +2,10 @@
 #define _TERMDETECT_HH 1
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <tuple>
 
 
 namespace terminal {
@@ -49,7 +51,7 @@ namespace terminal {
     col132,
     printer,
     regis,
-    sixel,
+    sixel,                    // Sixel graphics
     selerase,
     drcs,
     udk,
@@ -90,6 +92,8 @@ namespace terminal {
     std::string implementation_name() const;
     std::string emulation_name() const;
     static std::string feature_name(features feature);
+
+    static std::optional<std::tuple<unsigned,unsigned>> get_geometry();
   };
 
 } // namespace terminal
