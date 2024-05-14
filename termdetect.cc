@@ -305,9 +305,12 @@ namespace terminal {
           } while (ec == std::errc { } && endp < svend && *endp == '.');
           if (ec == std::errc { } && (endp == svend || *endp == ';'))
             implementation_version = std::string(sv.data(), endp);
-        }
 
-        sv.remove_prefix(endp - sv.data());
+          sv.remove_prefix(endp - sv.data());
+          if (sv == ";0")
+            return;
+        } else
+          sv.remove_prefix(endp - sv.data());
 
         da2_reply_tail = sv;
         if (sv[0] == ';') {
@@ -526,6 +529,8 @@ namespace terminal {
         }
 
         // Do not issue the DA3 and OSC702 requests for the kitty terminal emulator, it does not handle them so far.
+        // We also do not do this for mrxvt, it does not handle the DA3 request nor does it provide any answer
+        // to OSC702, just an empty string.
         if (! is_kitty() && ! is_mrxvt()) {
           // Do not issue the DA3 request for rxvt.
           if (! is_rxvt())
@@ -602,6 +607,15 @@ namespace terminal {
           else
             implementation_version = std::format("{}.{}.{}", vn / 10000, (vn / 100) % 100, vn % 100);
         }
+      }
+
+      if (is_alacritty() && emulation == emulations::vt100) {
+        std::string da1_extended = da1_reply + ";";
+        for (const auto& e : known_emulations)
+          if (da1_extended.starts_with(std::get<const char*>(e))) {
+            emulation = std::get<emulations>(e);
+            break;
+          }
       }
 
       // Add features which are not discovered automatically.
