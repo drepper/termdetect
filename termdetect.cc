@@ -277,12 +277,19 @@ namespace terminal {
     {
       std::string_view sv = da2_reply;
 
+      bool matched = false;
       for (const auto& e : known_emulations)
         if (sv.starts_with(std::get<const char*>(e))) {
           emulation = std::get<emulations>(e);
           sv.remove_prefix(strlen(std::get<const char*>(e)));
+          matched = true;
           break;
         }
+
+      if (! matched && sv.starts_with("1;"))
+        // This is the non-descript answer of VT220 etc which refer to DA1 for the real answer.
+        // Only the rest of the information is important.
+        sv.remove_prefix(2);
 
       // The DA2 reply consists of the version information.  Usually separated by semicolons.
       auto skip = sv.find(';');
@@ -310,8 +317,11 @@ namespace terminal {
           // Terminal emulators do not agree how to encode the version number.  Some encode all the data in the number
           // after the first semicolon.  Others use the second semicolon as a decimal point.  Yet others use floating-point
           // notation.  Try to guess.
-          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100)
+          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100) {
             vn = vn * 100 + vn2;
+            sv.remove_prefix(endp2 - sv.data());
+            da2_reply_tail = sv;
+          }
         }
       }
     }
@@ -567,7 +577,9 @@ namespace terminal {
           // Konsole does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
           assert(! q_reply.empty());
           implementation_version = q_reply.substr(8);
-        } else {
+        } else if (is_kitty() && q_reply.starts_with("kitty(") && q_reply.ends_with(")"))
+          implementation_version = q_reply.substr(6, q_reply.size() - 7);
+        else {
           if (is_rxvt())
             // rxvt encodes the version number as Mm (major/minor) in two digits.
             vn = (vn / 10) * 10000 + (vn % 10) * 100;
@@ -792,6 +804,8 @@ namespace terminal {
       return "capturecontour";
     case features::recteditcontour:
       return "recteditcontour";
+    case features::desktopnotification:
+      return "desktopnotification";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
