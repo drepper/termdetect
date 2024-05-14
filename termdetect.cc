@@ -890,7 +890,7 @@ namespace terminal {
   {
     bool opened = fd == -1;
     if (fd == -1) {
-      fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY);
+      fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY | O_CLOEXEC);
       if (fd == -1)
         return std::nullopt;
     }
