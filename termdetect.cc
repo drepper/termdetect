@@ -24,7 +24,7 @@ namespace terminal {
 
     // Special string to indicate that the command never was issued.
     constexpr auto not_issued = "<NOT ISSUED>";
-    constexpr auto empty = "<EMPTY>";
+    constexpr auto empty = "<NO REPLY>";
 
 
     struct info_impl final : info {
