@@ -24,7 +24,7 @@ namespace terminal {
 
     // Special string to indicate that the command never was issued.
     constexpr auto not_issued = "<NOT ISSUED>";
-    constexpr auto empty = "<NO REPLY>";
+    constexpr auto no_reply = "<NO REPLY>";
 
 
     struct info_impl final : info {
@@ -69,7 +69,7 @@ namespace terminal {
       bool is_kitty() const;
       bool is_konsole() const;
       bool is_eterm() const;
-      bool is_deepin() const;
+      bool is_qt5() const;
     };
 
 
@@ -206,7 +206,7 @@ namespace terminal {
               res.push_back(buf[i]);
           }
         } else
-          res = empty;
+          res = no_reply;
       }
 
       ::tcsetattr(fd, TCSAFLUSH, &t_old);
@@ -478,10 +478,10 @@ namespace terminal {
     }
 
 
-    bool info_impl::is_deepin() const
+    bool info_impl::is_qt5() const
     {
       if (implementation != implementations::unknown)
-        return implementation == implementations::deepin;
+        return implementation == implementations::qt5;
 
       return da2_emulation == emulations::vt100 && emulation == emulations::vt100avo;
     }
@@ -507,7 +507,7 @@ namespace terminal {
       // - VTE does not understand CSI > q but that is the ultimate informer for xterm.
       // - alternatively DA3 can be used as a weak signal for xterm but DA3 does not work for kitty nor rxvt
       // - kitty needs the CSI + q T N request but this also does not work for VTE
-      // - eterm does not handle *anything*
+      // - Eterm and Emacs Term do not handle *anything*
       // We break the cycle by not issuing DA3 early and avoid if the CSI > q and DCS + q T N requests if
       // the terminal could possibly be VTE based.  Once we can exclude rxvt and kitty we can issue DA3
       // to be sure.
@@ -517,24 +517,33 @@ namespace terminal {
       // |                |           |               |           |           |           |            |
       // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp   |            |
       // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""        |            |
-      // | Deepin         | 1;2       | 0;VERS;0      | no resp   | no resp   | echo      |            |
-      // | ETerm          | no resp   | no resp       | no resp   | no resp   | echo      |            |
+      // | EmacsTerm      | no resp   | no resp       | no resp   | no resp   | echo      |            |
+      // | ETerm          | no resp   | no resp       | no resp   | no resp   | no resp   |            |
       // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
       // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
       // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no esp    |            |
       // | rxvt           | 1;2       | 85;VERS;0     | no resp   | no resp   | no resp   | rxvt*      |
       // | mrxvt          | 1;2       | 82;V1.V2.V3;0 | no resp   | no resp   | no resp   |            |
+      // | QT5            | 1;2       | 0;VERS;0      | no resp   | no resp   | echo      |            |
       // | ST             | 6         | no resp       | no resp   | no resp   | no resp   |            |
       // | Terminology    | a lot     | 61;VERS;0     | 7E7E5459  | terminolo*| no resp   |            |
       // | VTE            | 65;1;9    | 65;VERS;1     | 7E565445  | no resp   | no resp   |            |
       // | XTerm          | a lot     | 41;VERS;0     | 00000000  | XTerm(*   | no resp   |            |
       // |                |           |               |           |           |           |            |
       // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
+      //
+      // Other terminals use the same engines:
+      // VTE: gnome-console, mate-terminal, lxterminal, xfce4-terminal
+      // QT5: qt5, qterminal
 
-      // We are desperate when checking for eterm.  It does not handle any request and others than
-      // DA1 and DA2 must be avoided.
-      if (da1_reply == empty && da2_reply == empty) {
+      // We are desperate when checking for eterm and emacs term.  They do not handle any request and others than
+      // Any request other than DA1 and DA2 must be avoided (eterm does not trip over DA3 but still).
+      if (da1_reply == no_reply && da2_reply == no_reply) {
         if (auto term = ::getenv("TERM"); term != nullptr && strncmp(term, "eterm", 5) == 0) {
+          implementation = implementations::emacsterm;
+          // Assume the most basic.
+          emulation = emulations::vt100;
+        } else if (term != nullptr && strcmp(term, "Eterm") == 0) {
           implementation = implementations::eterm;
           // Assume the most basic.
           emulation = emulations::vt100;
@@ -545,7 +554,7 @@ namespace terminal {
       // responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty).
       // Unless there is something else that can be done the best we can do is to limit the number
       // of delays to one by determining the emulator type based on the DA2 request timeout.
-      if (! is_st() && ! is_alacritty() && ! is_eterm() && ! is_deepin()) {
+      if (! is_st() && ! is_alacritty() && ! is_eterm() && ! is_qt5()) {
         if (is_not_vte() && ! is_rxvt()) {
           make_q_request(tty_fd);
 
@@ -611,8 +620,8 @@ namespace terminal {
         implementation = implementations::alacritty;
       else if (is_konsole())
         implementation = implementations::konsole;
-      else if (is_deepin())
-        implementation = implementations::deepin;
+      else if (is_qt5())
+        implementation = implementations::qt5;
 
       // Determine the implementation version.
       if (implementation_version.empty()) {
@@ -725,8 +734,11 @@ namespace terminal {
     case implementations::eterm:
       res = "ETerm";
       break;
-    case implementations::deepin:
-      res = "Deepin";
+    case implementations::emacsterm:
+      res = "Emacs Term";
+      break;
+    case implementations::qt5:
+      res = "Qt5";
       break;
     default:
       for (auto b : real_this->da3_reply)

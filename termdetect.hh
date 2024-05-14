@@ -26,7 +26,8 @@ namespace terminal {
     st,
     konsole,
     eterm,
-    deepin,
+    emacsterm,
+    qt5,
   };
 
 
