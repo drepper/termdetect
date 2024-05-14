@@ -676,7 +676,7 @@ namespace terminal {
   }
 
 
-  const std::shared_ptr<info> info::get(bool close_fd)
+  const std::shared_ptr<info> info::alloc(bool close_fd)
   {
     return std::make_shared<info_impl>(close_fd);
   }

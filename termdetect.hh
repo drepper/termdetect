@@ -84,7 +84,7 @@ namespace terminal {
 
 
   struct info {
-    static const std::shared_ptr<info> get(bool close_fd = true);
+    static const std::shared_ptr<info> alloc(bool close_fd = true);
 
     static void set_request_delay(int ms);
 
