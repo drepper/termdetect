@@ -9,6 +9,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 #include <fcntl.h>
 #include <paths.h>
@@ -281,17 +282,31 @@ namespace terminal {
 
       // The DA2 reply consists of the version information.  Usually separated by semicolons.
       auto skip = sv.find(';');
-      auto [endp, ec] = std::from_chars(sv.data(), sv.data() + (skip == std::string_view::npos ? sv.size() : skip), vn);
+      auto svend = sv.data() + (skip == std::string_view::npos ? sv.size() : skip);
+      auto [endp, ec] = std::from_chars(sv.data(), svend, vn);
       if (ec == std::errc{ }) {
+        if (endp < svend && *endp == '.') {
+          do {
+            unsigned vn2;
+            auto [endp2, ec2] = std::from_chars(endp + 1, svend, vn2);
+            endp = endp2;
+            ec = ec2;
+          } while (ec == std::errc { } && endp < svend && *endp == '.');
+          if (ec == std::errc { } && (endp == svend || *endp == ';'))
+            implementation_version = std::string(sv.data(), endp);
+        }
+
         sv.remove_prefix(endp - sv.data());
+
         da2_reply_tail = sv;
         if (sv[0] == ';') {
           unsigned vn2;
           auto [endp2, ec2] = std::from_chars(sv.data() + 1, sv.data() + sv.size(), vn2);
 
           // Terminal emulators do not agree how to encode the version number.  Some encode all the data in the number
-          // after the first semicolon.  Others use the second semicolon as a decimal point.  Try to guess.
-          if (ec2 == std::errc{ } && vn < 10000 && vn2 != 0 && vn2 < 100)
+          // after the first semicolon.  Others use the second semicolon as a decimal point.  Yet others use floating-point
+          // notation.  Try to guess.
+          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100)
             vn = vn * 100 + vn2;
         }
       }
@@ -528,35 +543,37 @@ namespace terminal {
         implementation = implementations::konsole;
 
       // Determine the implementation version.
-      if (is_terminology()) {
-        // Terminology does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
-        assert(! q_reply.empty());
-        implementation_version = q_reply.substr(12);
-      } else if (is_konsole()) {
-        // Konsole does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
-        assert(! q_reply.empty());
-        implementation_version = q_reply.substr(8);
-      } else {
-        if (is_rxvt())
-          // rxvt encodes the version number as Mm (major/minor) in two digits.
-          vn = (vn / 10) * 10000 + (vn % 10) * 100;
-        else if (is_kitty() && vn > 400000)
-          // For some reason kitty adds 4000 to the first number.
-          vn = (vn - 400000) * 100;
-        else if (is_xterm())
-          // XTerm version numbers are > 100 and there is not even a minor version number.
-          vn *= 10000;
-        else if (is_vte())
-          // Ignore the last number after all.
-          vn /= 100;
+      if (implementation_version.empty()) {
+        if (is_terminology()) {
+          // Terminology does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
+          assert(! q_reply.empty());
+          implementation_version = q_reply.substr(12);
+        } else if (is_konsole()) {
+          // Konsole does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
+          assert(! q_reply.empty());
+          implementation_version = q_reply.substr(8);
+        } else {
+          if (is_rxvt())
+            // rxvt encodes the version number as Mm (major/minor) in two digits.
+            vn = (vn / 10) * 10000 + (vn % 10) * 100;
+          else if (is_kitty() && vn > 400000)
+            // For some reason kitty adds 4000 to the first number.
+            vn = (vn - 400000) * 100;
+          else if (is_xterm())
+            // XTerm version numbers are > 100 and there is not even a minor version number.
+            vn *= 10000;
+          else if (is_vte())
+            // Ignore the last number after all.
+            vn /= 100;
 
-        // Not all implementations provide a patch number.
-        if (vn % 10000 == 0)
-          implementation_version = std::format("{}", vn / 10000);
-        else if (vn % 100 == 0)
-          implementation_version = std::format("{}.{}", vn / 10000, (vn / 100) % 100);
-        else
-          implementation_version = std::format("{}.{}.{}", vn / 10000, (vn / 100) % 100, vn % 100);
+          // Not all implementations provide a patch number.
+          if (vn % 10000 == 0)
+            implementation_version = std::format("{}", vn / 10000);
+          else if (vn % 100 == 0)
+            implementation_version = std::format("{}.{}", vn / 10000, (vn / 100) % 100);
+          else
+            implementation_version = std::format("{}.{}.{}", vn / 10000, (vn / 100) % 100, vn % 100);
+        }
       }
 
       // Add features which are not discovered automatically.
