@@ -298,7 +298,7 @@ namespace terminal {
       auto skip = sv.find(';');
       auto svend = sv.data() + (skip == std::string_view::npos ? sv.size() : skip);
       auto [endp, ec] = std::from_chars(sv.data(), svend, vn);
-      if (ec == std::errc{ }) {
+      if (ec == std::errc { }) {
         if (endp < svend && *endp == '.') {
           do {
             unsigned vn2;
@@ -326,8 +326,11 @@ namespace terminal {
           if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100) {
             vn = vn * 100 + vn2;
             sv.remove_prefix(endp2 - sv.data());
-            da2_reply_tail = sv;
+              da2_reply_tail = sv;
           }
+          // Many emulators add ";0" at the end.  Ignore it.
+          if (da2_reply_tail == ";0")
+            da2_reply_tail = "";
         }
       }
     }
