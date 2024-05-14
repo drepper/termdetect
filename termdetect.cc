@@ -23,7 +23,8 @@ namespace terminal {
   namespace {
 
     // Special string to indicate that the command never was issued.
-    constexpr auto not_issued = "NOT ISSUED";
+    constexpr auto not_issued = "<NOT ISSUED>";
+    constexpr auto empty = "<EMPTY>";
 
 
     struct info_impl final : info {
@@ -64,6 +65,7 @@ namespace terminal {
       bool is_mrxvt() const;
       bool is_kitty() const;
       bool is_konsole() const;
+      bool is_eterm() const;
     };
 
 
@@ -199,7 +201,8 @@ namespace terminal {
             for (decltype(nread) i = 0; i < nread; ++i)
               res.push_back(buf[i]);
           }
-        }
+        } else
+          res = empty;
       }
 
       ::tcsetattr(fd, TCSAFLUSH, &t_old);
@@ -461,6 +464,12 @@ namespace terminal {
       return q_reply.starts_with("Konsole");
     }
 
+
+    bool info_impl::is_eterm() const
+    {
+      return implementation == implementations::eterm;
+    }
+
   } // anonymous namespace
 
 
@@ -482,6 +491,7 @@ namespace terminal {
       // - VTE does not understand CSI > q but that is the ultimate informer for xterm.
       // - alternatively DA3 can be used as a weak signal for xterm but DA3 does not work for kitty nor rxvt
       // - kitty needs the CSI + q T N request but this also does not work for VTE
+      // - eterm does not handle *anything*
       // We break the cycle by not issuing DA3 early and avoid if the CSI > q and DCS + q T N requests if
       // the terminal could possibly be VTE based.  Once we can exclude rxvt and kitty we can issue DA3
       // to be sure.
@@ -491,6 +501,7 @@ namespace terminal {
       // |                |           |               |           |           |           |            |
       // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp   |            |
       // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""        |            |
+      // | ETerm          |           |               |           |           |           |            |
       // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
       // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
       // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no esp    |            |
@@ -503,11 +514,17 @@ namespace terminal {
       // |                |           |               |           |           |           |            |
       // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
 
+      if (auto term = ::getenv("TERM"); strncmp(term, "eterm", 5) == 0) {
+        implementation = implementations::eterm;
+        // Assume the most basic.
+        emulation = emulations::vt100;
+      }
+
       // Detecting ST is, with the currently used requests, not possible without a delay.  It only
       // responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty).
       // Unless there is something else that can be done the best we can do is to limit the number
       // of delays to one by determining the emulator type based on the DA2 request timeout.
-      if (! is_st() && ! is_alacritty()) {
+      if (! is_st() && ! is_alacritty() && ! is_eterm()) {
         if (is_not_vte() && ! is_rxvt()) {
           make_q_request(fd);
 
@@ -680,6 +697,9 @@ namespace terminal {
       break;
     case implementations::konsole:
       res = "Konsole";
+      break;
+    case implementations::eterm:
+      res = "ETerm";
       break;
     default:
       for (auto b : real_this->da3_reply)

@@ -4,7 +4,7 @@ implementation         = VTE-based
 implementation version = XXXXXX
 emulation              = VT525;1
 features               = 132cols nrcs
-raw                    = TN=NOT ISSUED, DA1=65;1;9, DA2=65;XXXXXX;1, DA3=7E565445, OSC702=NOT ISSUED, Q=NOT ISSUED
+raw                    = TN=<EMPTY>, DA1=65;1;9, DA2=65;XXXXXX;1, DA3=7E565445, OSC702=<NOT ISSUED>, Q=VTE(XXXXXX)
 columns                = CCC
 rows                   = RRR
 
@@ -14,7 +14,7 @@ implementation         = Foot
 implementation version = XXXXXX
 emulation              = VT101;0
 features               = sixel ansicolors recteditcontour
-raw                    = TN=666F6F74, DA1=62;4;22, DA2=1;XXXXXX;0, DA3=464f4f54, OSC702=NOT ISSUED, Q=foot(XXXXXX)
+raw                    = TN=666F6F74, DA1=62;4;22, DA2=1;XXXXXX;0, DA3=464f4f54, OSC702=<NOT ISSUED>, Q=foot(XXXXXX)
 columns                = CCC
 rows                   = RRR
 
@@ -24,6 +24,6 @@ implementation         = Alacritty
 implementation version = XXXXXX
 emulation              = VT102
 features               =
-raw                    = TN=NOT ISSUED, DA1=6, DA2=0;XXXX;XX, DA3=NOT ISSUED, OSC702=NOT ISSUED, Q=NOT ISSUED
+raw                    = TN=<NOT ISSUED>, DA1=6, DA2=0;XXXX;XX, DA3=<NOT ISSUED>, OSC702=<NOT ISSUED>, Q=<NOT ISSUED>
 columns                = CCC
 rows                   = RRR

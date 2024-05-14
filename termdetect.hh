@@ -23,6 +23,7 @@ namespace terminal {
     alacritty,
     st,
     konsole,
+    eterm,
   };
 
 

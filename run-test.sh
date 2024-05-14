@@ -10,6 +10,7 @@ if type -p gnome-terminal > /dev/null; then
   sleep 0.5
   sed 's/\(implementation version = \)[[:digit:]]\{1,\}\.[[:digit:]]\{1,\}/\1XXXXXX/' $outfile |
   sed 's/\(DA2=[^;]*;\)[[:digit:]]*/\1XXXXXX/' |
+  sed 's/\(Q=VTE(\)[^)]*)[[:digit:]]*/\1XXXXXX)/' |
   sed 's/\(^columns * = \).*/\1CCC/' |
   sed 's/\(^rows * = \).*/\1RRR/' >> run-test.out
   echo -n > $outfile
