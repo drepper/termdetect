@@ -43,6 +43,9 @@ namespace terminal {
       // Version number derived from DA2 reply.
       unsigned vn = 0;
 
+      // Intermediate result, the emulation announced by DA2.
+      emulations da2_emulation = emulations::unknown;
+
 
       void make_da1_request(int fd);
       bool make_da2_request(int fd);
@@ -66,6 +69,7 @@ namespace terminal {
       bool is_kitty() const;
       bool is_konsole() const;
       bool is_eterm() const;
+      bool is_deepin() const;
     };
 
 
@@ -234,7 +238,7 @@ namespace terminal {
       // replies.  Give preference to the former.
       for (const auto& e : known_emulations)
         if (sv.starts_with(std::get<const char*>(e))) {
-          if (emulation == emulations::unknown)
+          if (emulation == emulations::unknown || emulation == emulations::vt100)
             emulation = std::get<emulations>(e);
           sv.remove_prefix(strlen(std::get<const char*>(e)));
           break;
@@ -283,7 +287,7 @@ namespace terminal {
       bool matched = false;
       for (const auto& e : known_emulations)
         if (sv.starts_with(std::get<const char*>(e))) {
-          emulation = std::get<emulations>(e);
+          da2_emulation = emulation = std::get<emulations>(e);
           sv.remove_prefix(strlen(std::get<const char*>(e)));
           matched = true;
           break;
@@ -473,6 +477,15 @@ namespace terminal {
       return implementation == implementations::eterm;
     }
 
+
+    bool info_impl::is_deepin() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::deepin;
+
+      return da2_emulation == emulations::vt100 && emulation == emulations::vt100avo;
+    }
+
   } // anonymous namespace
 
 
@@ -504,7 +517,8 @@ namespace terminal {
       // |                |           |               |           |           |           |            |
       // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp   |            |
       // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""        |            |
-      // | ETerm          |           |               |           |           |           |            |
+      // | Deepin         | 1;2       | 0;VERS;0      | no resp   | no resp   | echo      |            |
+      // | ETerm          | no resp   | no resp       | no resp   | no resp   | echo      |            |
       // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
       // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
       // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no esp    |            |
@@ -517,17 +531,21 @@ namespace terminal {
       // |                |           |               |           |           |           |            |
       // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
 
-      if (auto term = ::getenv("TERM"); strncmp(term, "eterm", 5) == 0) {
-        implementation = implementations::eterm;
-        // Assume the most basic.
-        emulation = emulations::vt100;
+      // We are desperate when checking for eterm.  It does not handle any request and others than
+      // DA1 and DA2 must be avoided.
+      if (da1_reply == empty && da2_reply == empty) {
+        if (auto term = ::getenv("TERM"); term != nullptr && strncmp(term, "eterm", 5) == 0) {
+          implementation = implementations::eterm;
+          // Assume the most basic.
+          emulation = emulations::vt100;
+        }
       }
 
       // Detecting ST is, with the currently used requests, not possible without a delay.  It only
       // responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty).
       // Unless there is something else that can be done the best we can do is to limit the number
       // of delays to one by determining the emulator type based on the DA2 request timeout.
-      if (! is_st() && ! is_alacritty() && ! is_eterm()) {
+      if (! is_st() && ! is_alacritty() && ! is_eterm() && ! is_deepin()) {
         if (is_not_vte() && ! is_rxvt()) {
           make_q_request(tty_fd);
 
@@ -593,6 +611,8 @@ namespace terminal {
         implementation = implementations::alacritty;
       else if (is_konsole())
         implementation = implementations::konsole;
+      else if (is_deepin())
+        implementation = implementations::deepin;
 
       // Determine the implementation version.
       if (implementation_version.empty()) {
@@ -704,6 +724,9 @@ namespace terminal {
       break;
     case implementations::eterm:
       res = "ETerm";
+      break;
+    case implementations::deepin:
+      res = "Deepin";
       break;
     default:
       for (auto b : real_this->da3_reply)
