@@ -7,6 +7,8 @@
 #include <string>
 #include <tuple>
 
+#include <unistd.h>
+
 
 namespace terminal {
 
@@ -80,7 +82,7 @@ namespace terminal {
 
 
   struct info {
-    static const std::shared_ptr<info> get();
+    static const std::shared_ptr<info> get(bool close_fd = true);
 
     static void set_request_delay(int ms);
 
@@ -96,6 +98,13 @@ namespace terminal {
     static std::string feature_name(features feature);
 
     static std::optional<std::tuple<unsigned,unsigned>> get_geometry();
+
+    int get_fd() const { return tty_fd; }
+    void close() { if (tty_fd != -1) { ::close(tty_fd); tty_fd = -1; } }
+
+  protected:
+    // File descriptor for the terminal.
+    int tty_fd = -1;
   };
 
 } // namespace terminal

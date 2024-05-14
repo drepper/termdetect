@@ -28,7 +28,7 @@ namespace terminal {
 
 
     struct info_impl final : info {
-      info_impl();
+      info_impl(bool close_fd);
 
       std::string da1_reply = not_issued;
       std::string da2_reply = not_issued;
@@ -476,18 +476,18 @@ namespace terminal {
   } // anonymous namespace
 
 
-  info_impl::info_impl()
+  info_impl::info_impl(bool close_fd)
   : info()
   {
     if (! request_delay.has_value())
       request_delay = get_default_request_delay();
 
-    int fd = ::open(_PATH_TTY, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
-    if (fd != -1) [[likely]] {
+    tty_fd = ::open(_PATH_TTY, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+    if (tty_fd != -1) [[likely]] {
       // The DA1 and DA2 requests seem to be universally implemented.  Note that the order of the calls is required.
       // Information about the terminal emulation from DA2 is more reliable.
-      da2_alarmed = make_da2_request(fd);
-      make_da1_request(fd);
+      da2_alarmed = make_da2_request(tty_fd);
+      make_da1_request(tty_fd);
 
       // The order to make requests without stalling/timing out in the reads is complicated.
       // - alacritty does not handle CSI > q, DCS + q T N, DA3, nor OSC702
@@ -529,22 +529,22 @@ namespace terminal {
       // of delays to one by determining the emulator type based on the DA2 request timeout.
       if (! is_st() && ! is_alacritty() && ! is_eterm()) {
         if (is_not_vte() && ! is_rxvt()) {
-          make_q_request(fd);
+          make_q_request(tty_fd);
 
           // Do not issue the TN request for rxvt and xterm.  We use the DA2 or Q reply for this.  It might not be conclusive but
           // no counterexamples are known so far.
           if (! is_rxvt() && ! is_xterm() && ! is_contour() && ! is_terminology() && ! is_konsole())
-            make_tn_request(fd);
+            make_tn_request(tty_fd);
         }
 
         if (! is_kitty() && ! is_rxvt()) {
-          make_da3_request(fd);
+          make_da3_request(tty_fd);
 
           // Reconsider whether to issue the Q and TN requests.
           if (is_not_vte() && ! is_vte() && ! is_xterm() && ! is_konsole()) {
-            make_q_request(fd);
+            make_q_request(tty_fd);
             if (! is_terminology())
-              make_tn_request(fd);
+              make_tn_request(tty_fd);
           }
         }
 
@@ -554,10 +554,10 @@ namespace terminal {
         if (! is_kitty() && ! is_mrxvt()) {
           // Do not issue the DA3 request for rxvt.
           if (! is_rxvt())
-            make_da3_request(fd);
+            make_da3_request(tty_fd);
 
           if (da3_reply == not_issued) {
-            make_osc702_request(fd);
+            make_osc702_request(tty_fd);
 
             // The code below assumes that we can identify rxvt via the OSC702 reply.
             assert(! is_rxvt() || osc702_reply.starts_with("rxvt"));
@@ -565,7 +565,8 @@ namespace terminal {
         }
       }
 
-      ::close(fd);
+      if (close_fd)
+        ::close(tty_fd);
 
       raw = std::format("TN={}, DA1={}, DA2={}, DA3={}, OSC702={}, Q={}", tn_reply, da1_reply, da2_reply, da3_reply, osc702_reply, q_reply);
 
@@ -646,9 +647,9 @@ namespace terminal {
   }
 
 
-  const std::shared_ptr<info> info::get()
+  const std::shared_ptr<info> info::get(bool close_fd)
   {
-    return std::make_shared<info_impl>();
+    return std::make_shared<info_impl>(close_fd);
   }
 
 
