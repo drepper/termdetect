@@ -533,7 +533,7 @@ namespace terminal {
       // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
       //
       // Other terminals use the same engines:
-      // VTE: gnome-console, mate-terminal, lxterminal, xfce4-terminal, roxterm
+      // VTE: gnome-console, mate-terminal, lxterminal, xfce4-terminal, roxterm, tilix
       // QT5: deepin, qterminal
 
       // We are desperate when checking for eterm and emacs term.  They do not handle any request and others than
