@@ -583,7 +583,7 @@ namespace terminal {
           // Konsole does not fill DA2 replies with appropriate version information.  Use the CSI > q reply.
           assert(! q_reply.empty());
           implementation_version = q_reply.substr(8);
-        } else if (is_kitty() && q_reply.starts_with("kitty(") && q_reply.ends_with(")"))
+        } else if (is_kitty() && q_reply.starts_with("kitty(") && q_reply.ends_with(")") && q_reply.size() > 7)
           implementation_version = q_reply.substr(6, q_reply.size() - 7);
         else {
           if (is_rxvt())
