@@ -482,22 +482,23 @@ namespace terminal {
       // We break the cycle by not issuing DA3 early and avoid if the CSI > q and DCS + q T N requests if
       // the terminal could possibly be VTE based.  Once we can exclude rxvt and kitty we can issue DA3
       // to be sure.
-      // +----------------+-----------+-----------+-----------+-----------+-----------+------------+
-      // | Name           |    DA1    |    DA2    |    DA3    |     Q     |    TN     |   OSC702   |
-      // +----------------+-----------+-----------+-----------+-----------+-----------+------------+
-      // |                |           |           |           |           |           |            |
-      // | Alacritty      | 6         | 0;VERS;1  | no resp   | no resp   | no resp   |            |
-      // | Contour        | a lot     | 65;VERS;0 | C0000000  | contour * | ""        |            |
-      // | Foot           | 62;4;22   | 1;VERS;0  | 464f4f54  | foot(*    | 666F6F74  |            |
-      // | Kitty          | 62;       | 1;4000;29 | no resp   | kitty*    | 78746572* |            |
-      // | Konsole        | 62;1;4    | 1;VERS;0  | 7E4B4445  | Konsole*  | no esp    |            |
-      // | rxvt           | 1;2       | 85;VERS;0 | no resp   | no resp   | no resp   | rxvt*      |
-      // | ST             | 6         | no resp   | no resp   | no resp   | no resp   |            |
-      // | Terminology    | a lot     | 61;VERS;0 | 7E7E5459  | terminolo*| no resp   |            |
-      // | VTE            | 65;1;9    | 65;VERS;1 | 7E565445  | no resp   | no resp   |            |
-      // | XTerm          | a lot     | 41;VERS;0 | 00000000  | XTerm(*   | no resp   |            |
-      // |                |           |           |           |           |           |            |
-      // +----------------+-----------+-----------+-----------+-----------+-----------+------------+
+      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
+      // | Name           |    DA1    |      DA2      |    DA3    |     Q     |    TN     |   OSC702   |
+      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
+      // |                |           |               |           |           |           |            |
+      // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp   |            |
+      // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""        |            |
+      // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
+      // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
+      // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no esp    |            |
+      // | rxvt           | 1;2       | 85;VERS;0     | no resp   | no resp   | no resp   | rxvt*      |
+      // | mrxvt          | 1;2       | 82;V1.V2.V3;0 | no resp   | no resp   | no resp   |            |
+      // | ST             | 6         | no resp       | no resp   | no resp   | no resp   |            |
+      // | Terminology    | a lot     | 61;VERS;0     | 7E7E5459  | terminolo*| no resp   |            |
+      // | VTE            | 65;1;9    | 65;VERS;1     | 7E565445  | no resp   | no resp   |            |
+      // | XTerm          | a lot     | 41;VERS;0     | 00000000  | XTerm(*   | no resp   |            |
+      // |                |           |               |           |           |           |            |
+      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
 
       // Detecting ST is, with the currently used requests, not possible without a delay.  It only
       // responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty).
