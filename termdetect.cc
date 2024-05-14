@@ -9,7 +9,6 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
-#include <vector>
 
 #include <fcntl.h>
 #include <paths.h>
@@ -23,16 +22,20 @@ namespace terminal {
 
   namespace {
 
+    // Special string to indicate that the command never was issued.
+    constexpr auto not_issued = "NOT ISSUED";
+
+
     struct info_impl final : info {
       info_impl();
 
-      std::string da1_reply { };
-      std::string da2_reply { };
+      std::string da1_reply = not_issued;
+      std::string da2_reply = not_issued;
       std::string_view da2_reply_tail { };
-      std::string da3_reply { };
-      std::string q_reply { };
-      std::string tn_reply { };
-      std::string osc702_reply { };
+      std::string da3_reply = not_issued;
+      std::string q_reply = not_issued;
+      std::string tn_reply = not_issued;
+      std::string osc702_reply = not_issued;
 
       bool da2_alarmed = false;
 
@@ -58,6 +61,7 @@ namespace terminal {
       bool is_contour() const;
       bool is_xterm() const;
       bool is_rxvt() const;
+      bool is_mrxvt() const;
       bool is_kitty() const;
       bool is_konsole() const;
     };
@@ -391,6 +395,15 @@ namespace terminal {
     }
 
 
+    bool info_impl::is_mrxvt() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::mrxvt;
+
+      return ! implementation_version.empty() && (da2_reply.starts_with("85;") || da2_reply.starts_with("82;"));
+    }
+
+
     bool info_impl::is_kitty() const
     {
       if (implementation != implementations::unknown)
@@ -502,12 +515,12 @@ namespace terminal {
         }
 
         // Do not issue the DA3 and OSC702 requests for the kitty terminal emulator, it does not handle them so far.
-        if (! is_kitty()) {
+        if (! is_kitty() && ! is_mrxvt()) {
           // Do not issue the DA3 request for rxvt.
           if (! is_rxvt())
             make_da3_request(fd);
 
-          if (da3_reply == "???") {
+          if (da3_reply == not_issued) {
             make_osc702_request(fd);
 
             // The code below assumes that we can identify rxvt via the OSC702 reply.
@@ -533,6 +546,8 @@ namespace terminal {
         implementation = implementations::contour;
       else if (is_xterm())
         implementation = implementations::xterm;
+      else if (is_mrxvt())
+        implementation = implementations::mrxvt;
       else if (osc702_reply.starts_with("rxvt"))
         implementation = implementations::rxvt;
       else if (is_kitty())
@@ -623,6 +638,9 @@ namespace terminal {
       break;
     case implementations::rxvt:
       res = "rxvt";
+      break;
+    case implementations::mrxvt:
+      res = "mrxvt";
       break;
     case implementations::kitty:
       res = "Kitty";

@@ -18,6 +18,7 @@ namespace terminal {
     terminology,
     contour,
     rxvt,
+    mrxvt,
     kitty,
     alacritty,
     st,
