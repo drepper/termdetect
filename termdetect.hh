@@ -99,7 +99,7 @@ namespace terminal {
     std::string emulation_name() const;
     static std::string feature_name(features feature);
 
-    static std::optional<std::tuple<unsigned,unsigned>> get_geometry();
+    static std::optional<std::tuple<unsigned,unsigned>> get_geometry(int fd = -1);
 
     int get_fd() const { return tty_fd; }
     void close() { if (tty_fd != -1) { ::close(tty_fd); tty_fd = -1; } }

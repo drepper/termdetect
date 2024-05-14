@@ -886,14 +886,18 @@ namespace terminal {
   }
 
 
-  std::optional<std::tuple<unsigned,unsigned>> info::get_geometry()
+  std::optional<std::tuple<unsigned,unsigned>> info::get_geometry(int fd)
   {
-    int fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY);
-    if (fd == -1)
-      return std::nullopt;
+    bool opened = fd == -1;
+    if (fd == -1) {
+      fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY);
+      if (fd == -1)
+        return std::nullopt;
+    }
     winsize ws;
     auto r = ::ioctl(fd, TIOCGWINSZ, &ws);
-    ::close(fd);
+    if (opened)
+      ::close(fd);
     if (r == 0)
       return std::make_tuple(unsigned(ws.ws_col), unsigned(ws.ws_row));
     return std::nullopt;
