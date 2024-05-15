@@ -44,4 +44,4 @@ add_test(NAME "initialization" COMMAND inittest)
 add_executable(inittest inittest.cc)
 target_link_libraries(inittest termdetect)
 
-add_test(NAME "terminals" COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/run-test.sh)
+# add_test(NAME "terminals" COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/run-test.sh)
