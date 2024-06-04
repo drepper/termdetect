@@ -80,6 +80,7 @@ namespace terminal {
     capturecontour,
     recteditcontour,
     desktopnotification,      // OSC777
+    decstbm,                  // DECSTBM, CSI n1;n1r
   };
 
 

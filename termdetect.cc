@@ -672,6 +672,9 @@ namespace terminal {
       if (is_kitty())
         // OSC777 supported.
         feature_set.insert(features::desktopnotification);
+
+      // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
+      feature_set.insert(features::decstbm);
     }
   }
 
