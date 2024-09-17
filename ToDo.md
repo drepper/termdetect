@@ -1,0 +1,1 @@
+- [ ] OSC52: set clipboard with escape sequence.  Disabled often for security reasons.  Check how to check at runtime
