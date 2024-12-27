@@ -70,6 +70,7 @@ namespace terminal {
       bool is_konsole() const;
       bool is_eterm() const;
       bool is_qt5() const;
+      bool is_ghostty() const;
     };
 
 
@@ -486,6 +487,15 @@ namespace terminal {
       return da2_emulation == emulations::vt100 && emulation == emulations::vt100avo;
     }
 
+
+    bool info_impl::is_ghostty() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::ghostty;
+
+      return q_reply.starts_with("ghostty");
+    }
+
   } // anonymous namespace
 
 
@@ -570,7 +580,7 @@ namespace terminal {
           // Reconsider whether to issue the Q and TN requests.
           if (is_not_vte() && ! is_vte() && ! is_xterm() && ! is_konsole()) {
             make_q_request(tty_fd);
-            if (! is_terminology())
+            if (! is_terminology() && ! is_ghostty())
               make_tn_request(tty_fd);
           }
         }
@@ -580,7 +590,7 @@ namespace terminal {
         // to OSC702, just an empty string.
         if (! is_kitty() && ! is_mrxvt()) {
           // Do not issue the DA3 request for rxvt.
-          if (! is_rxvt())
+          if (! is_rxvt() && ! is_ghostty())
             make_da3_request(tty_fd);
 
           if (da3_reply == not_issued) {
@@ -622,6 +632,8 @@ namespace terminal {
         implementation = implementations::konsole;
       else if (is_qt5())
         implementation = implementations::qt5;
+      else if (is_ghostty())
+        implementation = implementations::ghostty;
 
       // Determine the implementation version.
       if (implementation_version.empty()) {
@@ -742,6 +754,9 @@ namespace terminal {
       break;
     case implementations::qt5:
       res = "Qt5";
+      break;
+    case implementations::ghostty:
+      res = "ghostty";
       break;
     default:
       for (auto b : real_this->da3_reply)

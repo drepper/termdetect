@@ -28,6 +28,7 @@ namespace terminal {
     eterm,
     emacsterm,
     qt5,
+    ghostty,
   };
 
 
