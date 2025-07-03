@@ -58,7 +58,7 @@ namespace terminal {
     col132,
     printer,
     regis,
-    sixel,                    // Sixel graphics
+    sixel, // Sixel graphics
     selerase,
     drcs,
     udk,
@@ -80,8 +80,9 @@ namespace terminal {
     asciiemul,
     capturecontour,
     recteditcontour,
-    desktopnotification,      // OSC777
-    decstbm,                  // DECSTBM, CSI n1;n1r
+    desktopnotification, // OSC777
+    decstbm,             // DECSTBM, CSI n1;n1r
+    vertlinemarkers,
   };
 
 
@@ -91,20 +92,26 @@ namespace terminal {
     static void set_request_delay(int ms);
 
     implementations implementation = implementations::unknown;
-    std::string implementation_version { };
+    std::string implementation_version{};
     emulations emulation = emulations::unknown;
-    std::set<features> feature_set { };
-    std::string unknown_features { };
-    std::string raw { };
+    std::set<features> feature_set{};
+    std::string unknown_features{};
+    std::string raw{};
 
     std::string implementation_name() const;
     std::string emulation_name() const;
     static std::string feature_name(features feature);
 
-    static std::optional<std::tuple<unsigned,unsigned>> get_geometry(int fd = -1);
+    static std::optional<std::tuple<unsigned, unsigned>> get_geometry(int fd = -1);
 
     int get_fd() const { return tty_fd; }
-    void close() { if (tty_fd != -1) { ::close(tty_fd); tty_fd = -1; } }
+    void close()
+    {
+      if (tty_fd != -1) {
+        ::close(tty_fd);
+        tty_fd = -1;
+      }
+    }
 
   protected:
     // File descriptor for the terminal.

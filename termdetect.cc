@@ -32,7 +32,7 @@ namespace terminal {
 
       std::string da1_reply = not_issued;
       std::string da2_reply = not_issued;
-      std::string_view da2_reply_tail { };
+      std::string_view da2_reply_tail{};
       std::string da3_reply = not_issued;
       std::string q_reply = not_issued;
       std::string tn_reply = not_issued;
@@ -74,7 +74,7 @@ namespace terminal {
     };
 
 
-    // Escape sequences.
+// Escape sequences.
 #define CSI "\e["
 #define OSC "\e]"
 #define DCS "\eP"
@@ -105,7 +105,7 @@ namespace terminal {
 #define DA3_REPLY_SUFFIX ST
 
 
-    const std::array known_emulations {
+    const std::array known_emulations{
       std::make_tuple("0;", emulations::vt100),
       std::make_tuple("1;0", emulations::vt101),
       std::make_tuple("1;2", emulations::vt100avo),
@@ -130,32 +130,32 @@ namespace terminal {
     };
 
 
-    const std::map<unsigned,features> known_features {
-      { 1, features::col132 },
-      { 2, features::printer },
-      { 3, features::regis },
-      { 4, features::sixel },
-      { 6, features::selerase },
-      { 7, features::drcs },
-      { 8, features::udk },
-      { 9, features::nrcs },
-      { 12, features::scs },
-      { 15, features::techcharset },
-      { 16, features::locatorport },
-      { 17, features::stateinterrogation },
-      { 18, features::windowing },
-      { 19, features::sessions },
-      { 21, features::horscroll },
-      { 22, features::ansicolors },
-      { 23, features::greek },
-      { 24, features::turkish },
-      { 28, features::recteditcontour },
-      { 29, features::textlocator },
-      { 42, features::latin2 },
-      { 44, features::pcterm },
-      { 45, features::softkeymap },
-      { 46, features::asciiemul },
-      { 314, features::capturecontour },
+    const std::map<unsigned, features> known_features{
+      {1, features::col132},
+      {2, features::printer},
+      {3, features::regis},
+      {4, features::sixel},
+      {6, features::selerase},
+      {7, features::drcs},
+      {8, features::udk},
+      {9, features::nrcs},
+      {12, features::scs},
+      {15, features::techcharset},
+      {16, features::locatorport},
+      {17, features::stateinterrogation},
+      {18, features::windowing},
+      {19, features::sessions},
+      {21, features::horscroll},
+      {22, features::ansicolors},
+      {23, features::greek},
+      {24, features::turkish},
+      {28, features::recteditcontour},
+      {29, features::textlocator},
+      {42, features::latin2},
+      {44, features::pcterm},
+      {45, features::softkeymap},
+      {46, features::asciiemul},
+      {314, features::capturecontour},
     };
 
 
@@ -191,9 +191,7 @@ namespace terminal {
       if (::write(fd, request, strlen(request)) == ssize_t(strlen(request))) [[likely]] {
         wok = true;
 
-        pollfd pfds[1] {
-          { fd, POLLIN, 0 }
-        };
+        pollfd pfds[1]{{fd, POLLIN, 0}};
         auto n = ::poll(pfds, 1, *request_delay);
         rok = n != 0;
         if (rok) {
@@ -255,7 +253,7 @@ namespace terminal {
       while (! sv.empty()) {
         unsigned code;
         auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), code);
-        if (ec != std::errc{ } || ! (ptr == sv.data() + sv.size() || ptr[0] == ';'))
+        if (ec != std::errc{} || ! (ptr == sv.data() + sv.size() || ptr[0] == ';'))
           break;
         if (ptr[0] != '\0')
           ++ptr;
@@ -303,15 +301,15 @@ namespace terminal {
       auto skip = sv.find(';');
       auto svend = sv.data() + (skip == std::string_view::npos ? sv.size() : skip);
       auto [endp, ec] = std::from_chars(sv.data(), svend, vn);
-      if (ec == std::errc { }) {
+      if (ec == std::errc{}) {
         if (endp < svend && *endp == '.') {
           do {
             unsigned vn2;
             auto [endp2, ec2] = std::from_chars(endp + 1, svend, vn2);
             endp = endp2;
             ec = ec2;
-          } while (ec == std::errc { } && endp < svend && *endp == '.');
-          if (ec == std::errc { } && (endp == svend || *endp == ';'))
+          } while (ec == std::errc{} && endp < svend && *endp == '.');
+          if (ec == std::errc{} && (endp == svend || *endp == ';'))
             implementation_version = std::string(sv.data(), endp);
 
           sv.remove_prefix(endp - sv.data());
@@ -328,7 +326,7 @@ namespace terminal {
           // Terminal emulators do not agree how to encode the version number.  Some encode all the data in the number
           // after the first semicolon.  Others use the second semicolon as a decimal point.  Yet others use floating-point
           // notation.  Try to guess.
-          if (ec2 == std::errc { } && vn < 10000 && vn2 != 0 && vn2 < 100) {
+          if (ec2 == std::errc{} && vn < 10000 && vn2 != 0 && vn2 < 100) {
             vn = vn * 100 + vn2;
             sv.remove_prefix(endp2 - sv.data());
             da2_reply_tail = sv;
@@ -498,9 +496,7 @@ namespace terminal {
 
   } // anonymous namespace
 
-
-  info_impl::info_impl(bool close_fd)
-  : info()
+  info_impl::info_impl(bool close_fd) : info()
   {
     if (! request_delay.has_value())
       request_delay = get_default_request_delay();
@@ -684,6 +680,9 @@ namespace terminal {
       if (is_kitty())
         // OSC777 supported.
         feature_set.insert(features::desktopnotification);
+      if (is_contour())
+        // Vertical line markers.
+        feature_set.insert(features::vertlinemarkers);
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
@@ -903,8 +902,7 @@ namespace terminal {
     }
   }
 
-
-  std::optional<std::tuple<unsigned,unsigned>> info::get_geometry(int fd)
+  std::optional<std::tuple<unsigned, unsigned>> info::get_geometry(int fd)
   {
     bool opened = fd == -1;
     if (fd == -1) {
