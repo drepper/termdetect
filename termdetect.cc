@@ -897,6 +897,10 @@ namespace terminal {
       return "recteditcontour";
     case features::desktopnotification:
       return "desktopnotification";
+    case features::decstbm:
+      return "decstbm";
+    case features::vertlinemarkers:
+      return "vertlinemarkers";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
