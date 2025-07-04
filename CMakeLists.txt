@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.19)
 project(codana VERSION 0.0 HOMEPAGE_URL "https://github.com/drepper/termdetect" LANGUAGES C CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+  set(CMAKE_BUILD_TYPE Debug)
 endif()
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "/usr")
+  set(CMAKE_INSTALL_PREFIX "/usr")
 endif()
 
 set(debug_opts "-O0 -g3 -fvar-tracking -fvar-tracking-assignments -D_GLIBCXX_DEBUG -DDEBUG")
@@ -31,6 +31,14 @@ set(common_warnings "-Wall -Wextra -Wnull-dereference -Wdouble-promotion -Wshado
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 string(APPEND CMAKE_CXX_FLAGS " ${gcc_opts} ${common_warnings} -Wuseless-cast -Wsuggest-override -Weffc++")
+
+set(CMAKE_CXX_COMPILER_LAUNCHER ${CMAKE_SOURCE_DIR}/build-tools/launcher.sh)
+set(CMAKE_CXX_LINKER_LAUNCHER ${CMAKE_SOURCE_DIR}/build-tools/launcher.sh)
+set(CMAKE_C_COMPILER_LAUNCHER ${CMAKE_SOURCE_DIR}/build-tools/launcher.sh)
+set(CMAKE_C_LINKER_LAUNCHER ${CMAKE_SOURCE_DIR}/build-tools/launcher.sh)
+set(CMAKE_AR ${CMAKE_SOURCE_DIR}/build-tools/launcher-ar.sh)
+
+set(CMAKE_COLOR_DIAGNOSTICS ON)
 
 include(CheckPIESupported)
 check_pie_supported()
