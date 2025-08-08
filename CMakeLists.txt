@@ -9,6 +9,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "/usr")
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(debug_opts "-O0 -ggdb3 -D_GLIBCXX_DEBUG -DDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${debug_opts}")
 set(CMAKE_C_FLAGS_DEBUG "${debug_opts}")
