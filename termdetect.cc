@@ -186,7 +186,9 @@ namespace terminal {
       ::tcgetattr(fd, &t_old);
       termios t_new = t_old;
       ::cfmakeraw(&t_new);
-      ::tcsetattr(fd, TCSAFLUSH, &t_new);
+      if (::tcsetattr(fd, TCSAFLUSH, &t_new) < 0) [[unlikely]]
+        // This might indicate the process is running in the background and has no access to the terminal.
+        return false;
 
       if (::write(fd, request, strlen(request)) == ssize_t(strlen(request))) [[likely]] {
         wok = true;
