@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cctype>
+#include <csignal>
 #include <cstring>
 #include <format>
 #include <map>
@@ -500,6 +501,14 @@ namespace terminal {
 
   info_impl::info_impl(bool close_fd) : info()
   {
+    struct ::sigaction sa;
+    memset(&sa, '\0', sizeof(sa));
+    sa.sa_handler = SIG_IGN;
+    struct ::sigaction sa_out_old;
+    ::sigaction(SIGTTOU, &sa, &sa_out_old);
+    struct ::sigaction sa_in_old;
+    ::sigaction(SIGTTIN, &sa, &sa_in_old);
+
     if (! request_delay.has_value())
       request_delay = get_default_request_delay();
 
@@ -689,6 +698,9 @@ namespace terminal {
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
     }
+
+    ::sigaction(SIGTTOU, &sa_out_old, nullptr);
+    ::sigaction(SIGTTIN, &sa_in_old, nullptr);
   }
 
 
