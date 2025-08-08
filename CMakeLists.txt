@@ -9,7 +9,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "/usr")
 endif()
 
-set(debug_opts "-O0 -g3 -fvar-tracking -fvar-tracking-assignments -D_GLIBCXX_DEBUG -DDEBUG")
+set(debug_opts "-O0 -ggdb3 -D_GLIBCXX_DEBUG -DDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "${debug_opts}")
 set(CMAKE_C_FLAGS_DEBUG "${debug_opts}")
 
