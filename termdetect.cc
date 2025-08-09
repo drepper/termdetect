@@ -30,6 +30,7 @@ namespace terminal {
 
     struct info_impl final : info {
       info_impl(bool close_fd);
+      ~info_impl() override {}
 
       std::string da1_reply = not_issued;
       std::string da2_reply = not_issued;
