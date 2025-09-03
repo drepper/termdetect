@@ -83,6 +83,7 @@ namespace terminal {
     desktopnotification, // OSC777
     decstbm,             // DECSTBM, CSI n1;n1r
     vertlinemarkers,
+    underlinecolors,
   };
 
 

@@ -695,6 +695,8 @@ namespace terminal {
       if (is_contour())
         // Vertical line markers.
         feature_set.insert(features::vertlinemarkers);
+      if (is_kitty() || is_vte())
+	feature_set.insert(features::underlinecolors);
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
@@ -916,6 +918,8 @@ namespace terminal {
       return "decstbm";
     case features::vertlinemarkers:
       return "vertlinemarkers";
+    case features::underlinecolors:
+      return "underlinecolors";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
