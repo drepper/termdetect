@@ -73,6 +73,7 @@ namespace terminal {
       bool is_eterm() const;
       bool is_qt5() const;
       bool is_ghostty() const;
+      bool is_rio() const;
     };
 
 
@@ -179,7 +180,7 @@ namespace terminal {
 
 
     // Issue the request to the termi
-    bool make_request(std::string& res, int fd, const char* request, const char* reply_prefix, const char* reply_suffix)
+    bool make_request(std::string& res, int fd, const char* request, const char* reply_prefix, const char* reply_suffix, bool ignore_case)
     {
       bool wok = false;
       bool rok = false;
@@ -216,8 +217,18 @@ namespace terminal {
 
       if (wok && rok) {
         // Strip out the expected prefix and suffix.
-        if (res.size() > strlen(reply_prefix) + strlen(reply_suffix) && res.starts_with(reply_prefix) && res.ends_with(reply_suffix)) [[likely]]
-          res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
+        if (res.size() > strlen(reply_prefix) + strlen(reply_suffix)) {
+          if (res.starts_with(reply_prefix) && res.ends_with(reply_suffix)) [[likely]]
+            res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
+          else if (ignore_case) {
+            std::string lower_res = res;
+            // Skip lowering the escape sequence name (Esc P for DCS specifically).
+            for (size_t i = 2; i < lower_res.size(); ++i)
+              lower_res[i] = tolower(lower_res[i]);
+            if (lower_res.starts_with(reply_prefix) && lower_res.ends_with(reply_suffix)) [[likely]]
+              res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
+          }
+        }
       }
 
       return ! rok;
@@ -226,7 +237,7 @@ namespace terminal {
 
     void info_impl::make_da1_request(int fd)
     {
-      (void) make_request(da1_reply, fd, DA1_REQUEST, DA1_REPLY_PREFIX, DA1_REPLY_SUFFIX);
+      (void) make_request(da1_reply, fd, DA1_REQUEST, DA1_REPLY_PREFIX, DA1_REPLY_SUFFIX, false);
 
       parse_da1();
     }
@@ -275,7 +286,7 @@ namespace terminal {
 
     bool info_impl::make_da2_request(int fd)
     {
-      bool rfailed = make_request(da2_reply, fd, DA2_REQUEST, DA2_REPLY_PREFIX, DA2_REPLY_SUFFIX);
+      bool rfailed = make_request(da2_reply, fd, DA2_REQUEST, DA2_REPLY_PREFIX, DA2_REPLY_SUFFIX, false);
 
       parse_da2();
 
@@ -345,12 +356,12 @@ namespace terminal {
 
     void info_impl::make_da3_request(int fd)
     {
-      (void) make_request(da3_reply, fd, DA3_REQUEST, DA3_REPLY_PREFIX, DA3_REPLY_SUFFIX);
+      (void) make_request(da3_reply, fd, DA3_REQUEST, DA3_REPLY_PREFIX, DA3_REPLY_SUFFIX, false);
     }
 
     void info_impl::make_tn_request(int fd)
     {
-      (void) make_request(tn_reply, fd, TN_REQUEST, TN_REPLY_PREFIX, TN_REPLY_SUFFIX);
+      (void) make_request(tn_reply, fd, TN_REQUEST, TN_REPLY_PREFIX, TN_REPLY_SUFFIX, true);
 
       // Recognize the error code.
       if (tn_reply.starts_with(DCS "0"))
@@ -359,12 +370,12 @@ namespace terminal {
 
     void info_impl::make_q_request(int fd)
     {
-      (void) make_request(q_reply, fd, Q_REQUEST, Q_REPLY_PREFIX, Q_REPLY_SUFFIX);
+      (void) make_request(q_reply, fd, Q_REQUEST, Q_REPLY_PREFIX, Q_REPLY_SUFFIX, false);
     }
 
     void info_impl::make_osc702_request(int fd)
     {
-      (void) make_request(osc702_reply, fd, OSC702_REQUEST, OSC702_REPLY_PREFIX, OSC702_REPLY_SUFFIX);
+      (void) make_request(osc702_reply, fd, OSC702_REQUEST, OSC702_REPLY_PREFIX, OSC702_REPLY_SUFFIX, false);
     }
 
 
@@ -498,6 +509,15 @@ namespace terminal {
       return q_reply.starts_with("ghostty");
     }
 
+
+    bool info_impl::is_rio() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::rio;
+
+      return tn_reply == "72696F";
+    }
+
   } // anonymous namespace
 
   info_impl::info_impl(bool close_fd) : info()
@@ -539,10 +559,11 @@ namespace terminal {
       // | ETerm          | no resp   | no resp       | no resp   | no resp   | no resp   |            |
       // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
       // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
-      // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no esp    |            |
+      // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no resp   |            |
       // | rxvt           | 1;2       | 85;VERS;0     | no resp   | no resp   | no resp   | rxvt*      |
       // | mrxvt          | 1;2       | 82;V1.V2.V3;0 | no resp   | no resp   | no resp   |            |
       // | QT5            | 1;2       | 0;VERS;0      | no resp   | no resp   | echo      |            |
+      // | Rio            | 62;4;6;22 | 0;VERS;1      | no resp   | no resp   | 72696F    |            |
       // | ST             | 6         | no resp       | no resp   | no resp   | no resp   |            |
       // | Terminology    | a lot     | 61;VERS;0     | 7E7E5459  | terminolo*| no resp   |            |
       // | VTE            | 65;1;9    | 65;VERS;1     | 7E565445  | no resp   | no resp   |            |
@@ -582,7 +603,7 @@ namespace terminal {
             make_tn_request(tty_fd);
         }
 
-        if (! is_kitty() && ! is_rxvt()) {
+        if (! is_kitty() && ! is_rxvt() && ! is_rio()) {
           make_da3_request(tty_fd);
 
           // Reconsider whether to issue the Q and TN requests.
@@ -596,7 +617,7 @@ namespace terminal {
         // Do not issue the DA3 and OSC702 requests for the kitty terminal emulator, it does not handle them so far.
         // We also do not do this for mrxvt, it does not handle the DA3 request nor does it provide any answer
         // to OSC702, just an empty string.
-        if (! is_kitty() && ! is_mrxvt()) {
+        if (! is_kitty() && ! is_mrxvt() && ! is_rio()) {
           // Do not issue the DA3 request for rxvt.
           if (! is_rxvt() && ! is_ghostty())
             make_da3_request(tty_fd);
@@ -642,6 +663,10 @@ namespace terminal {
         implementation = implementations::qt5;
       else if (is_ghostty())
         implementation = implementations::ghostty;
+      // Keep the following test last because the test is weak, it just tests for an exact
+      // DA1 reply which, theoretically, could also be returned by other implementations.
+      else if (is_rio())
+        implementation = implementations::rio;
 
       // Determine the implementation version.
       if (implementation_version.empty()) {
@@ -665,7 +690,7 @@ namespace terminal {
           else if (is_xterm())
             // XTerm version numbers are > 100 and there is not even a minor version number.
             vn *= 10000;
-          else if (is_vte())
+          else if (is_vte() || is_rio())
             // Ignore the last number after all.
             vn /= 100;
 
@@ -696,7 +721,7 @@ namespace terminal {
         // Vertical line markers.
         feature_set.insert(features::vertlinemarkers);
       if (is_kitty() || is_vte())
-	feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinecolors);
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
@@ -773,6 +798,9 @@ namespace terminal {
       break;
     case implementations::ghostty:
       res = "ghostty";
+      break;
+    case implementations::rio:
+      res = "Rio";
       break;
     default:
       for (auto b : real_this->da3_reply)

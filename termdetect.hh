@@ -29,6 +29,7 @@ namespace terminal {
     emacsterm,
     qt5,
     ghostty,
+    rio,
   };
 
 
