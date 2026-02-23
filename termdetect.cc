@@ -422,6 +422,17 @@ namespace terminal {
             }
           }
         }
+      } else if (sv.front() == '#' && sv.size() == 7) {
+        uint32_t u32;
+        auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), u32, 16);
+        if (ec == std::errc{}) {
+          color c{static_cast<uint8_t>((u32 >> 16) & 0xff), static_cast<uint8_t>((u32 >> 8) & 0xff), static_cast<uint8_t>(u32 & 0xff)};
+
+          if (x == 10)
+            default_foreground = c;
+          else if (x == 11)
+            default_background = c;
+        }
       }
     }
 
