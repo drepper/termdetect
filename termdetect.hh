@@ -276,6 +276,7 @@ namespace terminal {
       uint16_t r;
       uint16_t g;
       uint16_t b;
+      bool operator==(const color& other) const { return other.r == r && other.g == g && other.b == b; }
     };
     color default_foreground{};
     color default_background{};
