@@ -1,6 +1,7 @@
 #ifndef _TERMDETECT_HH
 # define _TERMDETECT_HH 1
 
+# include <cstdint>
 # include <memory>
 # include <optional>
 # include <set>
@@ -270,6 +271,14 @@ namespace terminal {
     static std::string feature_name(features feature);
 
     static std::optional<std::tuple<unsigned, unsigned>> get_geometry(int fd = -1);
+
+    struct color {
+      uint16_t r;
+      uint16_t g;
+      uint16_t b;
+    };
+    color default_foreground{};
+    color default_background{};
 
     int get_fd() const { return tty_fd; }
     void close()

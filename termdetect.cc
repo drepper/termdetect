@@ -2,7 +2,9 @@
 
 #include <cassert>
 #include <cctype>
+#include <charconv>
 #include <csignal>
+#include <cstdint>
 #include <cstring>
 #include <format>
 #include <map>
@@ -56,6 +58,8 @@ namespace terminal {
       void make_q_request(int fd);
       void make_osc702_request(int fd);
 
+      void make_osc1x_request(int fd, unsigned x);
+
       void parse_da1();
       void parse_da2();
 
@@ -82,6 +86,7 @@ namespace terminal {
 #define OSC "\e]"
 #define DCS "\eP"
 #define ST "\e\\"
+#define BEL "\a"
 
 #define Q_REQUEST CSI ">q"
 #define Q_REPLY_PREFIX DCS ">|"
@@ -90,6 +95,10 @@ namespace terminal {
 #define TN_REQUEST DCS "+q544e" ST
 #define TN_REPLY_PREFIX DCS "1+r544e="
 #define TN_REPLY_SUFFIX ST
+
+#define OSC1x_REQUEST OSC "{};?" BEL
+#define OSC1x_REPLY_PREFIX OSC "{};"
+#define OSC1x_REPLY_SUFFIX "\a"
 
 #define OSC702_REQUEST OSC "702;?" ST
 #define OSC702_REPLY_PREFIX OSC "702;"
@@ -373,6 +382,47 @@ namespace terminal {
       (void) make_request(q_reply, fd, Q_REQUEST, Q_REPLY_PREFIX, Q_REPLY_SUFFIX, false);
     }
 
+    void info_impl::make_osc1x_request(int fd, unsigned x)
+    {
+      auto req = std::format(OSC1x_REQUEST, x);
+      auto replpfx = std::format(OSC1x_REPLY_PREFIX, x);
+
+      std::string reply;
+      (void) make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false);
+
+      std::string_view sv{reply};
+      if (sv.starts_with("rgb:")) {
+        sv.remove_prefix(4);
+        color c;
+
+        auto get_value = [](std::string_view& svr) -> std::optional<uint16_t> {
+          uint16_t u16;
+          auto [ptr, ec] = std::from_chars(svr.data(), svr.data() + svr.size(), u16, 16);
+          if (ec != std::errc{})
+            return {};
+          svr.remove_prefix(ptr - svr.data());
+          return u16;
+        };
+
+        if (auto v = get_value(sv); v && sv.front() == '/') {
+          c.r = *v;
+          sv.remove_prefix(1);
+          if ((v = get_value(sv)) && sv.front() == '/') {
+            c.g = *v;
+            sv.remove_prefix(1);
+            if ((v = get_value(sv)) && sv.empty()) {
+              c.b = *v;
+
+              if (x == 10)
+                default_foreground = c;
+              else if (x == 11)
+                default_background = c;
+            }
+          }
+        }
+      }
+    }
+
     void info_impl::make_osc702_request(int fd)
     {
       (void) make_request(osc702_reply, fd, OSC702_REQUEST, OSC702_REPLY_PREFIX, OSC702_REPLY_SUFFIX, false);
@@ -630,6 +680,10 @@ namespace terminal {
           }
         }
       }
+
+      // XYZ There might be emulators we should not use the query on.
+      make_osc1x_request(tty_fd, 10);
+      make_osc1x_request(tty_fd, 11);
 
       if (close_fd)
         ::close(tty_fd);

@@ -1,23 +1,25 @@
 #include "termdetect.hh"
 
-#include <iostream>
+#include <print>
 
 
 int main()
 {
   auto ti = terminal::info::alloc();
 
-  std::cout << "implementation         = " << ti->implementation_name() << std::endl;
-  std::cout << "implementation version = " << ti->implementation_version << std::endl;
-  std::cout << "emulation              = " << ti->emulation_name() << std::endl;
-  std::cout << "features               =";
+  std::println("implementation         = {}", ti->implementation_name());
+  std::println("implementation version = {}", ti->implementation_version);
+  std::println("emulation              = {}", ti->emulation_name());
+  std::print("features               =");
   for (auto f : ti->feature_set)
-    std::cout << ' ' << ti->feature_name(f);
+    std::print(" {}", ti->feature_name(f));
   if (! ti->unknown_features.empty())
-    std::cout << ' ' << ti->unknown_features;
-  std::cout << std::endl;
-  std::cout << "raw                    = " << ti->raw << std::endl;
-  auto [col,row] = ti->get_geometry().value_or(std::make_tuple(80u, 24u));
-  std::cout << "columns                = " << col << std::endl;
-  std::cout << "rows                   = " << row << std::endl;
+    std::print(" {}", ti->unknown_features);
+  std::println();
+  std::println("raw                    = {}", ti->raw);
+  auto [col, row] = ti->get_geometry().value_or(std::make_tuple(80u, 24u));
+  std::println("columns                = {}", col);
+  std::println("rows                   = {}", row);
+  std::println("default foreground     = {:04x}/{:04x}/{:04x}", ti->default_foreground.r, ti->default_foreground.g, ti->default_foreground.b);
+  std::println("default background     = {:04x}/{:04x}/{:04x}", ti->default_background.r, ti->default_background.g, ti->default_background.b);
 }
