@@ -20,6 +20,6 @@ int main()
   auto [col, row] = ti->get_geometry().value_or(std::make_tuple(80u, 24u));
   std::println("columns                = {}", col);
   std::println("rows                   = {}", row);
-  std::println("default foreground     = {:04x}/{:04x}/{:04x}", ti->default_foreground.r, ti->default_foreground.g, ti->default_foreground.b);
-  std::println("default background     = {:04x}/{:04x}/{:04x}", ti->default_background.r, ti->default_background.g, ti->default_background.b);
+  std::println("default foreground     = {:02x}/{:02x}/{:02x}", ti->default_foreground.r, ti->default_foreground.g, ti->default_foreground.b);
+  std::println("default background     = {:02x}/{:02x}/{:02x}", ti->default_background.r, ti->default_background.g, ti->default_background.b);
 }

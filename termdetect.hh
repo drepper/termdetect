@@ -273,9 +273,9 @@ namespace terminal {
     static std::optional<std::tuple<unsigned, unsigned>> get_geometry(int fd = -1);
 
     struct color {
-      uint16_t r;
-      uint16_t g;
-      uint16_t b;
+      uint8_t r;
+      uint8_t g;
+      uint8_t b;
       bool operator==(const color& other) const { return other.r == r && other.g == g && other.b == b; }
     };
     color default_foreground{};

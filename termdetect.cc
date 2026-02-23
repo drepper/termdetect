@@ -395,13 +395,15 @@ namespace terminal {
         sv.remove_prefix(4);
         color c;
 
-        auto get_value = [](std::string_view& svr) -> std::optional<uint16_t> {
+        auto get_value = [](std::string_view& svr) -> std::optional<uint8_t> {
           uint16_t u16;
           auto [ptr, ec] = std::from_chars(svr.data(), svr.data() + svr.size(), u16, 16);
           if (ec != std::errc{})
             return {};
           svr.remove_prefix(ptr - svr.data());
-          return u16;
+          // The values are returned as 16-bit values, at least for some terminal emulators.
+          // XYZ Determine whether this is the case for all.
+          return u16 / 256;
         };
 
         if (auto v = get_value(sv); v && sv.front() == '/') {
