@@ -191,7 +191,7 @@ namespace terminal {
     }
 
 
-    // Issue the request to the termi
+    // Issue the request to the terminal
     bool make_request(std::string& res, int fd, const char* request, const char* reply_prefix, const char* reply_suffix, bool ignore_case)
     {
       bool wok = false;
@@ -227,6 +227,7 @@ namespace terminal {
 
       ::tcsetattr(fd, TCSAFLUSH, &t_old);
 
+      bool unexpected = ! rok;
       if (wok && rok) {
         // Strip out the expected prefix and suffix.
         if (res.size() > strlen(reply_prefix) + strlen(reply_suffix)) {
@@ -239,11 +240,15 @@ namespace terminal {
               lower_res[i] = tolower(lower_res[i]);
             if (lower_res.starts_with(reply_prefix) && lower_res.ends_with(reply_suffix)) [[likely]]
               res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
-          }
-        }
+            else
+              unexpected = true;
+          } else
+            unexpected = true;
+        } else
+          unexpected = true;
       }
 
-      return ! rok;
+      return unexpected;
     }
 
 
@@ -391,7 +396,7 @@ namespace terminal {
       auto replpfx = std::format(OSC1x_REPLY_PREFIX, x);
 
       std::string reply;
-      if (! make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false))
+      if (make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false))
         make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_ALT_SUFFIX, false);
 
       std::string_view sv{reply};
