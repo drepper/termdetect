@@ -78,6 +78,7 @@ namespace terminal {
       bool is_qt5() const;
       bool is_ghostty() const;
       bool is_rio() const;
+      bool is_wezterm() const;
     };
 
 
@@ -98,7 +99,9 @@ namespace terminal {
 
 #define OSC1x_REQUEST OSC "{};?" BEL
 #define OSC1x_REPLY_PREFIX OSC "{};"
-#define OSC1x_REPLY_SUFFIX "\a"
+#define OSC1x_REPLY_SUFFIX BEL
+// The following alternative suffix is (incorrectly so) used by WezTerm.
+#define OSC1x_REPLY_ALT_SUFFIX ST
 
 #define OSC702_REQUEST OSC "702;?" ST
 #define OSC702_REPLY_PREFIX OSC "702;"
@@ -388,7 +391,8 @@ namespace terminal {
       auto replpfx = std::format(OSC1x_REPLY_PREFIX, x);
 
       std::string reply;
-      (void) make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false);
+      if (! make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false))
+        make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_ALT_SUFFIX, false);
 
       std::string_view sv{reply};
       if (sv.starts_with("rgb:")) {
@@ -581,6 +585,15 @@ namespace terminal {
       return tn_reply == "72696F";
     }
 
+
+    bool info_impl::is_wezterm() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::wezterm;
+
+      return tn_reply == "57657A5465726D";
+    }
+
   } // anonymous namespace
 
   info_impl::info_impl(bool close_fd) : info()
@@ -612,27 +625,28 @@ namespace terminal {
       // We break the cycle by not issuing DA3 early and avoid if the CSI > q and DCS + q T N requests if
       // the terminal could possibly be VTE based.  Once we can exclude rxvt and kitty we can issue DA3
       // to be sure.
-      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
-      // | Name           |    DA1    |      DA2      |    DA3    |     Q     |    TN     |   OSC702   |
-      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
-      // |                |           |               |           |           |           |            |
-      // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp   |            |
-      // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""        |            |
-      // | EmacsTerm      | no resp   | no resp       | no resp   | no resp   | echo      |            |
-      // | ETerm          | no resp   | no resp       | no resp   | no resp   | no resp   |            |
-      // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74  |            |
-      // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572* |            |
-      // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no resp   |            |
-      // | rxvt           | 1;2       | 85;VERS;0     | no resp   | no resp   | no resp   | rxvt*      |
-      // | mrxvt          | 1;2       | 82;V1.V2.V3;0 | no resp   | no resp   | no resp   |            |
-      // | QT5            | 1;2       | 0;VERS;0      | no resp   | no resp   | echo      |            |
-      // | Rio            | 62;4;6;22 | 0;VERS;1      | no resp   | no resp   | 72696F    |            |
-      // | ST             | 6         | no resp       | no resp   | no resp   | no resp   |            |
-      // | Terminology    | a lot     | 61;VERS;0     | 7E7E5459  | terminolo*| no resp   |            |
-      // | VTE            | 65;1;9    | 65;VERS;1     | 7E565445  | no resp   | no resp   |            |
-      // | XTerm          | a lot     | 41;VERS;0     | 00000000  | XTerm(*   | no resp   |            |
-      // |                |           |               |           |           |           |            |
-      // +----------------+-----------+---------------+-----------+-----------+-----------+------------+
+      // +----------------+-----------+---------------+-----------+-----------+----------------+------------+
+      // | Name           |    DA1    |      DA2      |    DA3    |     Q     |    TN          |   OSC702   |
+      // +----------------+-----------+---------------+-----------+-----------+----------------+------------+
+      // |                |           |               |           |           |                |            |
+      // | Alacritty      | 6         | 0;VERS;1      | no resp   | no resp   | no resp        |            |
+      // | Contour        | a lot     | 65;VERS;0     | C0000000  | contour * | ""             |            |
+      // | EmacsTerm      | no resp   | no resp       | no resp   | no resp   | echo           |            |
+      // | ETerm          | no resp   | no resp       | no resp   | no resp   | no resp        |            |
+      // | Foot           | 62;4;22   | 1;VERS;0      | 464f4f54  | foot(*    | 666F6F74       |            |
+      // | Kitty          | 62;       | 1;4000;29     | no resp   | kitty(*   | 78746572*      |            |
+      // | Konsole        | 62;1;4    | 1;VERS;0      | 7E4B4445  | Konsole*  | no resp        |            |
+      // | rxvt           | 1;2       | 85;VERS;0     | no resp   | no resp   | no resp        | rxvt*      |
+      // | mrxvt          | 1;2       | 82;V1.V2.V3;0 | no resp   | no resp   | no resp        |            |
+      // | QT5            | 1;2       | 0;VERS;0      | no resp   | no resp   | echo           |            |
+      // | Rio            | 62;4;6;22 | 0;VERS;1      | no resp   | no resp   | 72696F         |            |
+      // | ST             | 6         | no resp       | no resp   | no resp   | no resp        |            |
+      // | Terminology    | a lot     | 61;VERS;0     | 7E7E5459  | terminolo*| no resp        |            |
+      // | VTE            | 65;1;9    | 65;VERS;1     | 7E565445  | no resp   | no resp        |            |
+      // | WezTerm        | a lot     | 1;277;0       | 00000000  | WezTerm   | 57657A5465726D |            |
+      // | XTerm          | a lot     | 41;VERS;0     | 00000000  | XTerm(*   | no resp        |            |
+      // |                |           |               |           |           |                |            |
+      // +----------------+-----------+---------------+-----------+-----------+----------------+------------+
       //
       // Other terminals use the same engines:
       // VTE: gnome-console, mate-terminal, lxterminal, xfce4-terminal, roxterm, tilix
@@ -734,6 +748,8 @@ namespace terminal {
       // DA1 reply which, theoretically, could also be returned by other implementations.
       else if (is_rio())
         implementation = implementations::rio;
+      else if (is_wezterm())
+        implementation = implementations::wezterm;
 
       // Determine the implementation version.
       if (implementation_version.empty()) {
@@ -747,7 +763,15 @@ namespace terminal {
           implementation_version = q_reply.substr(8);
         } else if (is_kitty() && q_reply.starts_with("kitty(") && q_reply.ends_with(")") && q_reply.size() > 7)
           implementation_version = q_reply.substr(6, q_reply.size() - 7);
-        else {
+        else if (is_wezterm()) {
+          // WezTerm for now, it seems uses the date, time, and hash of the commit unless a tag was defined
+          // at the time of the build.  Use the date as the version number in case it is the former.
+          // Skip the WezTerm prefix on all cases.
+          if (auto end = q_reply.find('_'); end != std::string::npos)
+            implementation_version = q_reply.substr(8, end - 8);
+          else
+            implementation_version = q_reply.substr(8);
+        } else {
           if (is_rxvt())
             // rxvt encodes the version number as Mm (major/minor) in two digits.
             vn = (vn / 10) * 10000 + (vn % 10) * 100;
@@ -795,6 +819,9 @@ namespace terminal {
       }
       if (is_vte())
         feature_set.insert(features::underlinecolors);
+      if (is_wezterm())
+        // OSC133 supported.
+        feature_set.insert(features::scroll_markers);
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
@@ -874,6 +901,9 @@ namespace terminal {
       break;
     case implementations::rio:
       res = "Rio";
+      break;
+    case implementations::wezterm:
+      res = "WezTerm";
       break;
     default:
       for (auto b : real_this->da3_reply)

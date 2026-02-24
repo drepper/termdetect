@@ -31,6 +31,7 @@ namespace terminal {
     qt5,
     ghostty,
     rio,
+    wezterm,
   };
 
 
