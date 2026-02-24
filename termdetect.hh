@@ -195,7 +195,7 @@ namespace terminal {
     mirror_box_drawing = 2500,        // Mirror box drawing characters (VTE)
     bidi_auto = 2501,                 // BiDi autodetection (VTE)
     report_ambiguous = 7700,          // Ambiguous width reporting (mintty)
-    scroll_markers = 7711,            // Scroll markers (prompt start) (mintty)
+    scroll_markers = 7711,            // Scroll markers (prompt start) (mintty) also used for OSC133
     rewrap_resize = 7723,             // Rewrap in resize (mintty)
     app_esc_key = 7727,               // Application escape key mode (mintty)
     backslash_esc = 7728,             // Send ^\ instead of ^[ for ESC key (mintty)
@@ -247,7 +247,6 @@ namespace terminal {
     recteditcontour,
     desktopnotification, // OSC777
     decstbm,             // DECSTBM, CSI n1;n1r
-    vertlinemarkers,
     underlinecolors,
   };
 

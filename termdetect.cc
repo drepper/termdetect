@@ -781,13 +781,19 @@ namespace terminal {
       }
 
       // Add features which are not discovered automatically.
-      if (is_kitty())
+      if (is_kitty()) {
         // OSC777 supported.
         feature_set.insert(features::desktopnotification);
+        feature_set.insert(features::underlinecolors);
+      }
       if (is_contour())
-        // Vertical line markers.
-        feature_set.insert(features::vertlinemarkers);
-      if (is_kitty() || is_vte())
+        // OSC133 supported.
+        feature_set.insert(features::scroll_markers);
+      if (is_ghostty()) {
+        // OSC133 supported.
+        feature_set.insert(features::scroll_markers);
+      }
+      if (is_vte())
         feature_set.insert(features::underlinecolors);
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
@@ -1011,10 +1017,10 @@ namespace terminal {
       return "desktopnotification";
     case features::decstbm:
       return "decstbm";
-    case features::vertlinemarkers:
-      return "vertlinemarkers";
     case features::underlinecolors:
       return "underlinecolors";
+    case features::scroll_markers:
+      return "scroll_markers";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
