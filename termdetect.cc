@@ -192,7 +192,7 @@ namespace terminal {
 
 
     // Issue the request to the terminal
-    bool make_request(std::string& res, int fd, const char* request, const char* reply_prefix, const char* reply_suffix, bool ignore_case)
+    bool make_request(std::string& res, int fd, const char* request, const char* reply_prefix, const char* reply_suffix, bool ignore_case, const char* alt_reply_suffix = nullptr)
     {
       bool wok = false;
       bool rok = false;
@@ -227,28 +227,25 @@ namespace terminal {
 
       ::tcsetattr(fd, TCSAFLUSH, &t_old);
 
-      bool unexpected = ! rok;
       if (wok && rok) {
         // Strip out the expected prefix and suffix.
-        if (res.size() > strlen(reply_prefix) + strlen(reply_suffix)) {
-          if (res.starts_with(reply_prefix) && res.ends_with(reply_suffix)) [[likely]]
+        if (res.starts_with(reply_prefix) && res.ends_with(reply_suffix)) [[likely]]
+          res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
+        else if (alt_reply_suffix != nullptr && res.starts_with(reply_prefix) && res.ends_with(alt_reply_suffix))
+          res = res.substr(strlen(reply_prefix), res.size() - (strlen(alt_reply_suffix)) - (strlen(reply_prefix)));
+        else if (ignore_case) {
+          std::string lower_res = res;
+          // Skip lowering the escape sequence name (Esc P for DCS specifically).
+          for (size_t i = 2; i < lower_res.size(); ++i)
+            lower_res[i] = tolower(lower_res[i]);
+          if (lower_res.starts_with(reply_prefix) && lower_res.ends_with(reply_suffix))
             res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
-          else if (ignore_case) {
-            std::string lower_res = res;
-            // Skip lowering the escape sequence name (Esc P for DCS specifically).
-            for (size_t i = 2; i < lower_res.size(); ++i)
-              lower_res[i] = tolower(lower_res[i]);
-            if (lower_res.starts_with(reply_prefix) && lower_res.ends_with(reply_suffix)) [[likely]]
-              res = res.substr(strlen(reply_prefix), res.size() - (strlen(reply_suffix)) - (strlen(reply_prefix)));
-            else
-              unexpected = true;
-          } else
-            unexpected = true;
-        } else
-          unexpected = true;
+          else if (lower_res.starts_with(reply_prefix) && lower_res.ends_with(alt_reply_suffix)) [[likely]]
+            res = res.substr(strlen(reply_prefix), res.size() - (strlen(alt_reply_suffix)) - (strlen(reply_prefix)));
+        }
       }
 
-      return unexpected;
+      return ! rok;
     }
 
 
@@ -396,8 +393,7 @@ namespace terminal {
       auto replpfx = std::format(OSC1x_REPLY_PREFIX, x);
 
       std::string reply;
-      if (make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false))
-        make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_ALT_SUFFIX, false);
+      (void) make_request(reply, fd, req.c_str(), replpfx.c_str(), OSC1x_REPLY_SUFFIX, false, OSC1x_REPLY_ALT_SUFFIX);
 
       std::string_view sv{reply};
       if (sv.starts_with("rgb:")) {
