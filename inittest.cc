@@ -22,4 +22,7 @@ int main()
   std::println("rows                   = {}", row);
   std::println("default foreground     = {:02x}/{:02x}/{:02x}", ti->default_foreground.r, ti->default_foreground.g, ti->default_foreground.b);
   std::println("default background     = {:02x}/{:02x}/{:02x}", ti->default_background.r, ti->default_background.g, ti->default_background.b);
+  auto [ccol, crow] = ti->get_cursor_pos().value_or(std::make_tuple(0u, 0u));
+  std::println("cursor column          = {}", ccol);
+  std::println("cursor row             = {}", crow);
 }

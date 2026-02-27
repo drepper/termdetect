@@ -1057,6 +1057,7 @@ namespace terminal {
     }
   }
 
+
   std::optional<std::tuple<unsigned, unsigned>> info::get_geometry(int fd)
   {
     bool opened = fd == -1;
@@ -1072,6 +1073,46 @@ namespace terminal {
     if (r == 0)
       return std::make_tuple(unsigned(ws.ws_col), unsigned(ws.ws_row));
     return std::nullopt;
+  }
+
+
+  std::optional<std::tuple<unsigned, unsigned>> info::get_cursor_pos(int fd)
+  {
+    bool opened = fd == -1;
+    if (fd == -1) {
+      fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY | O_CLOEXEC);
+      if (fd == -1)
+        return std::nullopt;
+    }
+
+    std::string repl;
+    std::optional<std::tuple<unsigned, unsigned>> res;
+    if (! make_request(repl, fd, CSI "6n", CSI, "R", false)) [[likely]] {
+      unsigned col = 0;
+      unsigned val = 0;
+      size_t i = 0;
+      while (i < repl.size()) {
+        if (isdigit(repl[i]))
+          val = val * 10 + (repl[i++] - '0');
+        else if (repl[i] == ';') {
+          if (col == 0) [[likely]] {
+            col = val;
+            val = 0;
+            ++i;
+          } else
+            // Garbage
+            break;
+        } else
+          // Garbage.
+          break;
+      }
+      if (col != 0 && val != 0)
+        res = {col, val};
+    }
+
+    if (opened)
+      ::close(fd);
+    return res;
   }
 
 } // namespace terminal

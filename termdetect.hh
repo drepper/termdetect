@@ -255,7 +255,7 @@ namespace terminal {
   struct info {
     virtual ~info() { close(); }
 
-    static const std::shared_ptr<info> alloc(bool close_fd = true);
+    static const std::shared_ptr<info> alloc(bool close_fd = false);
 
     static void set_request_delay(int ms);
 
@@ -270,7 +270,14 @@ namespace terminal {
     std::string emulation_name() const;
     static std::string feature_name(features feature);
 
-    static std::optional<std::tuple<unsigned, unsigned>> get_geometry(int fd = -1);
+    // Get the terminal's number of columns and rows, if possible.  Pass -1 to use /dev/tty.
+    static std::optional<std::tuple<unsigned, unsigned>> get_geometry(int fd);
+    std::optional<std::tuple<unsigned, unsigned>> get_geometry() { return info::get_geometry(tty_fd); }
+
+    // Get the cursor position of the terminal.  Return the column and row, 1-based, if possible.
+    // Pass -1 to use /dev/tty.
+    static std::optional<std::tuple<unsigned, unsigned>> get_cursor_pos(int fd);
+    std::optional<std::tuple<unsigned, unsigned>> get_cursor_pos() { return info::get_cursor_pos(tty_fd); }
 
     struct color {
       uint8_t r;
