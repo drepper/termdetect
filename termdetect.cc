@@ -713,8 +713,10 @@ namespace terminal {
       make_osc1x_request(tty_fd, 10);
       make_osc1x_request(tty_fd, 11);
 
-      if (close_fd)
+      if (close_fd) [[unlikely]] {
         ::close(tty_fd);
+        tty_fd = -1;
+      }
 
       raw = std::format("TN={}, DA1={}, DA2={}, DA3={}, OSC702={}, Q={}", tn_reply, da1_reply, da2_reply, da3_reply, osc702_reply, q_reply);
 
