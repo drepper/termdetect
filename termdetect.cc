@@ -819,12 +819,20 @@ namespace terminal {
       if (is_ghostty()) {
         // OSC133 supported.
         feature_set.insert(features::scroll_markers);
+	// OSC9;4 supported.
+        feature_set.insert(features::progress_bar);
       }
       if (is_vte())
         feature_set.insert(features::underlinecolors);
-      if (is_wezterm())
+      if (is_konsole())
+	// OSC9;4 supported.
+        feature_set.insert(features::progress_bar);
+      if (is_wezterm()) {
         // OSC133 supported.
         feature_set.insert(features::scroll_markers);
+	// OSC9;4 supported.
+        feature_set.insert(features::progress_bar);
+      }
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
       feature_set.insert(features::decstbm);
@@ -1050,10 +1058,14 @@ namespace terminal {
       return "desktopnotification";
     case features::decstbm:
       return "decstbm";
+    case features::decopm:
+      return "decopm";
     case features::underlinecolors:
       return "underlinecolors";
     case features::scroll_markers:
       return "scroll_markers";
+    case features::progress_bar:
+      return "progress_bar";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }

@@ -249,6 +249,7 @@ namespace terminal {
     desktopnotification, // OSC777
     decstbm,             // DECSTBM, CSI n1;n1r
     underlinecolors,
+    progress_bar,        // OSC 9;4
   };
 
 
