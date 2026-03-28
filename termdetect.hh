@@ -249,7 +249,11 @@ namespace terminal {
     desktopnotification, // OSC777
     decstbm,             // DECSTBM, CSI n1;n1r
     underlinecolors,
-    progress_bar,        // OSC 9;4
+    underlinevariants, // Variants like double, curly, dotted, dashed underline (CSI 4:Xm)
+    progress_bar,      // OSC9;4
+    iop_zones,         // OSC133
+    cwd,               // OSC7
+    title,             // OCS2
   };
 
 

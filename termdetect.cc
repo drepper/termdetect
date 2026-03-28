@@ -5,6 +5,7 @@
 #include <charconv>
 #include <csignal>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <format>
 #include <map>
@@ -79,6 +80,7 @@ namespace terminal {
       bool is_ghostty() const;
       bool is_rio() const;
       bool is_wezterm() const;
+      bool is_foot() const;
     };
 
 
@@ -447,6 +449,32 @@ namespace terminal {
     }
 
 
+    // Use DECRQM to check for features.
+    // Return values:
+    // 0  Mode not recognized or no reply
+    // 1  Set
+    // 2  Reset
+    // 3  Permanently set
+    // 4  Permanently reset
+    int make_decrqm_request(int fd, features p, bool dec)
+    {
+      auto req = std::format(CSI "{}{}$p", dec ? "?" : "", std::to_underlying(p));
+      auto res_pref = std::format(CSI "{}{};", dec ? "?" : "", std::to_underlying(p));
+      std::string res_str;
+
+      int res = 0;
+      if (! make_request(res_str, fd, req.c_str(), res_pref.c_str(), "$y", false)) {
+        char* endp;
+        auto res_cstr = res_str.c_str();
+        res = strtol(res_cstr, &endp, 10);
+        if (*endp != '\0' || res < 0 || res > 4)
+          res = 0;
+      }
+
+      return res;
+    }
+
+
     bool info_impl::is_st() const
     {
       if (implementation != implementations::unknown)
@@ -595,6 +623,15 @@ namespace terminal {
       return tn_reply == "57657A5465726D";
     }
 
+
+    bool info_impl::is_foot() const
+    {
+      if (implementation != implementations::unknown)
+        return implementation == implementations::foot;
+
+      return da3_reply == "464f4f54";
+    }
+
   } // anonymous namespace
 
   info_impl::info_impl(bool close_fd) : info()
@@ -713,6 +750,21 @@ namespace terminal {
       make_osc1x_request(tty_fd, 10);
       make_osc1x_request(tty_fd, 11);
 
+      // Query features via DECRQM.
+      // clang-format off
+      static constexpr std::array rqm_dec_features
+      {
+        features::mouse_event,
+        features::bracket_paste,
+        features::sync_output,
+        features::grapheme,
+        features::scroll_markers,
+      };
+      // clang-format on
+      for (const auto& e : rqm_dec_features)
+        if (make_decrqm_request(tty_fd, e, true) != 0)
+          feature_set.insert(e);
+
       if (close_fd) [[unlikely]] {
         ::close(tty_fd);
         tty_fd = -1;
@@ -812,26 +864,70 @@ namespace terminal {
         // OSC777 supported.
         feature_set.insert(features::desktopnotification);
         feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+        // OSC2 supported.
+        feature_set.insert(features::title);
       }
-      if (is_contour())
-        // OSC133 supported.
-        feature_set.insert(features::scroll_markers);
-      if (is_ghostty()) {
-        // OSC133 supported.
-        feature_set.insert(features::scroll_markers);
-	// OSC9;4 supported.
-        feature_set.insert(features::progress_bar);
-      }
-      if (is_vte())
+      if (is_contour()) {
+        // OSC777 supported.
+        feature_set.insert(features::desktopnotification);
         feature_set.insert(features::underlinecolors);
-      if (is_konsole())
-	// OSC9;4 supported.
-        feature_set.insert(features::progress_bar);
-      if (is_wezterm()) {
+        feature_set.insert(features::underlinevariants);
         // OSC133 supported.
-        feature_set.insert(features::scroll_markers);
-	// OSC9;4 supported.
+        feature_set.insert(features::iop_zones);
+        // OSC2 supported.
+        feature_set.insert(features::title);
+      }
+      if (is_ghostty()) {
+        // OSC777 supported.
+        feature_set.insert(features::desktopnotification);
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+        // OSC133 supported.
+        feature_set.insert(features::iop_zones);
+        // OSC9;4 supported.
         feature_set.insert(features::progress_bar);
+        // OSC2 supported.
+        feature_set.insert(features::title);
+      }
+      if (is_vte()) {
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+        // OSC2 supported.
+        feature_set.insert(features::title);
+      }
+      if (is_konsole()) {
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+        // OSC9;4 supported.
+        feature_set.insert(features::progress_bar);
+      }
+      if (is_wezterm()) {
+        // OSC777 supported.
+        feature_set.insert(features::desktopnotification);
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+        // OSC133 supported.
+        feature_set.insert(features::iop_zones);
+        // OSC7 supported.
+        feature_set.insert(features::cwd);
+        // OSC9;4 supported.
+        feature_set.insert(features::progress_bar);
+        // OSC2 supported.
+        // XXX Theoretically supported, but as OSC1!
+        // feature_set.insert(features::title);
+      }
+      if (is_alacritty()) {
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+      }
+      if (is_foot()) {
+        feature_set.insert(features::underlinecolors);
+        feature_set.insert(features::underlinevariants);
+      }
+      if (is_xterm()) {
+        // OSC2 supported.
+        feature_set.insert(features::title);
       }
 
       // Unless demonstrated otherwise, assume that the terminal has DECSTBM support.
@@ -1062,10 +1158,26 @@ namespace terminal {
       return "decopm";
     case features::underlinecolors:
       return "underlinecolors";
+    case features::underlinevariants:
+      return "underlinevariants";
     case features::scroll_markers:
       return "scroll_markers";
     case features::progress_bar:
       return "progress_bar";
+    case features::sync_output:
+      return "sync_output";
+    case features::bracket_paste:
+      return "bracket_paste";
+    case features::grapheme:
+      return "grapheme";
+    case features::mouse_event:
+      return "mouse_event";
+    case features::iop_zones:
+      return "iop_zones";
+    case features::cwd:
+      return "cwd";
+    case features::title:
+      return "title";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
