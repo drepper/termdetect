@@ -30,7 +30,7 @@ set(CMAKE_C_FLAGS_MINSIZEREL "${minsizerel_opts}")
 set(gcc_opts "-fsave-optimization-record -frecord-gcc-switches -fdiagnostics-color=always -fno-operator-names")
 set(common_warnings "-Wall -Wextra -Wnull-dereference -Wdouble-promotion -Wshadow -Wformat=2 -Wcast-qual -Wcast-align -Wstrict-aliasing -Wpointer-arith -Winit-self -Wredundant-decls -Wundef -Wempty-body -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wrestrict")
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 string(APPEND CMAKE_CXX_FLAGS " ${gcc_opts} ${common_warnings} -Wuseless-cast -Wsuggest-override -Weffc++")
 
