@@ -199,14 +199,6 @@ namespace terminal {
       bool wok = false;
       bool rok = false;
 
-      termios t_old;
-      ::tcgetattr(fd, &t_old);
-      termios t_new = t_old;
-      ::cfmakeraw(&t_new);
-      if (::tcsetattr(fd, TCSAFLUSH, &t_new) < 0) [[unlikely]]
-        // This might indicate the process is running in the background and has no access to the terminal.
-        return false;
-
       if (::write(fd, request, strlen(request)) == ssize_t(strlen(request))) [[likely]] {
         wok = true;
 
@@ -226,8 +218,6 @@ namespace terminal {
         } else
           res = no_reply;
       }
-
-      ::tcsetattr(fd, TCSAFLUSH, &t_old);
 
       if (wok && rok) {
         // Strip out the expected prefix and suffix.
@@ -632,6 +622,24 @@ namespace terminal {
       return da3_reply == "464f4f54";
     }
 
+
+    bool make_raw(int fd, termios& t_old)
+    {
+      ::tcgetattr(fd, &t_old);
+      termios t_new = t_old;
+      ::cfmakeraw(&t_new);
+      if (::tcsetattr(fd, TCSAFLUSH, &t_new) < 0) [[unlikely]]
+        // This might indicate the process is running in the background and has no access to the terminal.
+        return false;
+      return true;
+    }
+
+
+    void undo_raw(int fd, const termios& t_old)
+    {
+      ::tcsetattr(fd, TCSAFLUSH, &t_old);
+    }
+
   } // anonymous namespace
 
   info_impl::info_impl(bool close_fd) : info()
@@ -649,6 +657,10 @@ namespace terminal {
 
     tty_fd = ::open(_PATH_TTY, O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
     if (tty_fd != -1) [[likely]] {
+      termios t_old;
+      if (! make_raw(tty_fd, t_old))
+        return;
+
       // The DA1 and DA2 requests seem to be universally implemented.  Note that the order of the calls is required.
       // Information about the terminal emulation from DA2 is more reliable.
       da2_alarmed = make_da2_request(tty_fd);
@@ -764,6 +776,8 @@ namespace terminal {
       for (const auto& e : rqm_dec_features)
         if (make_decrqm_request(tty_fd, e, true) != 0)
           feature_set.insert(e);
+
+      undo_raw(tty_fd, t_old);
 
       if (close_fd) [[unlikely]] {
         ::close(tty_fd);
@@ -1190,7 +1204,7 @@ namespace terminal {
     if (fd == -1) {
       fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY | O_CLOEXEC);
       if (fd == -1)
-        return std::nullopt;
+        return {};
     }
     winsize ws;
     auto r = ::ioctl(fd, TIOCGWINSZ, &ws);
@@ -1198,7 +1212,7 @@ namespace terminal {
       ::close(fd);
     if (r == 0)
       return std::make_tuple(unsigned(ws.ws_col), unsigned(ws.ws_row));
-    return std::nullopt;
+    return {};
   }
 
 
@@ -1208,8 +1222,12 @@ namespace terminal {
     if (fd == -1) {
       fd = ::open(_PATH_TTY, O_RDWR | O_CLOEXEC | O_NOCTTY | O_CLOEXEC);
       if (fd == -1)
-        return std::nullopt;
+        return {};
     }
+
+    termios t_old;
+    if (! make_raw(fd, t_old))
+      return {};
 
     std::string repl;
     std::optional<std::tuple<unsigned, unsigned>> res;
@@ -1235,6 +1253,8 @@ namespace terminal {
       if (col != 0 && val != 0)
         res = {col, val};
     }
+
+    undo_raw(fd, t_old);
 
     if (opened)
       ::close(fd);
