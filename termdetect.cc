@@ -1232,15 +1232,15 @@ namespace terminal {
     std::string repl;
     std::optional<std::tuple<unsigned, unsigned>> res;
     if (! make_request(repl, fd, CSI "6n", CSI, "R", false)) [[likely]] {
-      unsigned col = 0;
+      unsigned row = 0;
       unsigned val = 0;
       size_t i = 0;
       while (i < repl.size()) {
         if (isdigit(repl[i]))
           val = val * 10 + (repl[i++] - '0');
         else if (repl[i] == ';') {
-          if (col == 0) [[likely]] {
-            col = val;
+          if (row == 0) [[likely]] {
+            row = val;
             val = 0;
             ++i;
           } else
@@ -1250,8 +1250,8 @@ namespace terminal {
           // Garbage.
           break;
       }
-      if (col != 0 && val != 0)
-        res = {col, val};
+      if (row != 0 && val != 0)
+        res = {val, row};
     }
 
     undo_raw(fd, t_old);
