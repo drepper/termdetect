@@ -144,6 +144,7 @@ namespace terminal {
     decatcbm = 115,                   // Alternate text color blink mode
     decbbsm = 116,                    // Bold and blink style mode
     dececm = 117,                     // Erase color mode
+    kitty_graphics = 800,             // Kitty Graphics Protocol
     mouse_event = 1000,               // Send mouse x&y on button press (xterm)
     hilite_mouse = 1001,              // Use hilite mouse tracking (xterm)
     cell_motion = 1002,               // Use cell motion mouse tracking (xterm)

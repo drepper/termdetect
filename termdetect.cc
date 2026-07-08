@@ -884,6 +884,7 @@ namespace terminal {
         feature_set.insert(features::underlinevariants);
         // OSC2 supported.
         feature_set.insert(features::title);
+        feature_set.insert(features::kitty_graphics);
       }
       if (is_contour()) {
         // OSC777 supported.
@@ -906,6 +907,7 @@ namespace terminal {
         feature_set.insert(features::progress_bar);
         // OSC2 supported.
         feature_set.insert(features::title);
+        feature_set.insert(features::kitty_graphics);
       }
       if (is_vte()) {
         feature_set.insert(features::underlinecolors);
@@ -1195,6 +1197,8 @@ namespace terminal {
       return "cwd";
     case features::title:
       return "title";
+    case features::kitty_graphics:
+      return "kitty_graphics";
     default:
       return std::format("unknown{}", std::to_underlying(feature));
     }
