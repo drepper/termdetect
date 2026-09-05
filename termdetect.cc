@@ -1268,4 +1268,29 @@ namespace terminal {
     return res;
   }
 
+
+  bool info::emit_function(function_type fct, bool on)
+  {
+    bool res = false;
+    std::string_view s;
+
+    switch (fct) {
+    case terminal::function_type::secondary:
+      // Likely supported everywhere.
+      s = on ? CSI "?1049h" : CSI "?1049l";
+      break;
+    case terminal::function_type::mouse_press:
+      // The VT200 mode is available everywhere.
+      s = on ? CSI "?1000h" : CSI "?1000l";
+      break;
+    default:
+      break;
+    }
+
+    if (! s.empty())
+      res = ::write(tty_fd, s.data(), s.size()) == static_cast<ssize_t>(s.size());
+
+    return res;
+  }
+
 } // namespace terminal

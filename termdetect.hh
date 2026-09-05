@@ -258,6 +258,14 @@ namespace terminal {
   };
 
 
+  // Functionality invoked through escape sequences.
+  enum struct function_type {
+    secondary,
+    cursor_visible,
+    mouse_press,
+  };
+
+
   struct info {
     virtual ~info() { close(); }
 
@@ -293,6 +301,8 @@ namespace terminal {
     };
     color default_foreground{};
     color default_background{};
+
+    bool emit_function(function_type fct, bool on);
 
     int get_fd() const { return tty_fd; }
     void close()
