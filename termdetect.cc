@@ -1279,6 +1279,10 @@ namespace terminal {
       // Likely supported everywhere.
       s = on ? CSI "?1049h" : CSI "?1049l";
       break;
+    case terminal::function_type::cursor_visible:
+      // This function is likely also universal.
+      s = on ? CSI "?25h" : CSI "?25l";
+      break;
     case terminal::function_type::mouse_press:
       // The VT200 mode is available everywhere.
       s = on ? CSI "?1000h" : CSI "?1000l";
