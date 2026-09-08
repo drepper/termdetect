@@ -1287,6 +1287,10 @@ namespace terminal {
       // The VT200 mode is available everywhere.
       s = on ? CSI "?1000h" : CSI "?1000l";
       break;
+    case terminal::function_type::mouse_button_motion:
+      // XYZ Check availability
+      s = on ? CSI "?1002h" : CSI "?1002l";
+      break;
     default:
       break;
     }

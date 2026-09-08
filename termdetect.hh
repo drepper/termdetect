@@ -263,6 +263,7 @@ namespace terminal {
     secondary,
     cursor_visible,
     mouse_press,
+    mouse_button_motion,
   };
 
 
