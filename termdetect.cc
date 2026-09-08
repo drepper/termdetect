@@ -935,6 +935,7 @@ namespace terminal {
         // OSC2 supported.
         // XXX Theoretically supported, but as OSC1!
         // feature_set.insert(features::title);
+        feature_set.insert(features::kitty_graphics);
       }
       if (is_alacritty()) {
         feature_set.insert(features::underlinecolors);
