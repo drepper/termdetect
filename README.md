@@ -63,6 +63,39 @@ This means that the time of this writing these rules are followed in the discove
 - ST only responds to DA1 and its answer to that request (= "6") is not unique (same as Alacritty)
 
 
+
+## Graphics Support
+
+There are a number of possibilities available to display graphics in the terminal:
+- Sixel, older, something losely standardized wrt the actual placement in the terminal
+- Kitty Graphics Protocol, as the name suggests, originally in the Kitty terminal.
+- ITerm2, not really supported here
+
+There is a standard flag to discover Sixel mode which the terminals use (a bit in the DA1 reply).
+For Kitty Graphics Protocol there is no standard.  The `feature_set` information contains
+information for both types.
+
+
+### Sixel
+
+Availability:
+- Wezterm
+- xterm in VT330, VT340, and VT382 mode
+
+To start xterm in, e.g., VT340 mode use:
+
+```
+xterm -xrm "XTerm*decTerminalID: vt340" -xrm "XTerm*numColorRegisters: 256"
+```
+
+### Kitty Graphics Protocol
+
+Availability:
+- Kitty
+- Wezterm
+- Ghostty
+
+
 ## To Do
 
 - [ ] Add features beyond those from DA2 to the feature set
