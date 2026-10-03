@@ -876,6 +876,10 @@ namespace terminal {
           }
       }
 
+      // Pretty much all terminal implementations support blinking.  Ghostty does not, at least for now.
+      if (! is_ghostty())
+        feature_set.insert(features::blink);
+
       // Add features which are not discovered automatically.
       if (is_kitty()) {
         // OSC777 supported.

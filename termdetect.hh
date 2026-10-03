@@ -255,6 +255,7 @@ namespace terminal {
     iop_zones,         // OSC133
     cwd,               // OSC7
     title,             // OCS2
+    blink,
   };
 
 
